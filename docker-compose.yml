@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  # Example service for local development
+  # property-ai:
+  #   build: ./services/property-ai
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./services/property-ai:/app
+  #   depends_on:
+  #     - firestore-emulator
+  # firestore-emulator:
+  #   image: google/cloud-sdk:latest
+  #   command: gcloud emulators firestore start --host-port=0.0.0.0:8080
+  #   ports:
+  #     - "8080:8080"

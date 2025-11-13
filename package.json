@@ -1,0 +1,12 @@
+{
+  "name": "pg-businessflow-ai-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo for PG-BusinessFlow-AI Autonomous Governance System",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
