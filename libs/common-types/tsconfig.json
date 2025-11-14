@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "composite": true,
     "outDir": "../../dist/libs/common-types",
     "rootDir": "./src",
     "types": ["node", "jest"],

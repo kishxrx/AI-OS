@@ -1,0 +1,5 @@
+{
+  "name": "@app/common-types",
+  "version": "1.0.0",
+  "main": "../../dist/libs/common-types/index.js"
+}

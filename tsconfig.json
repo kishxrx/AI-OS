@@ -17,7 +17,10 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "@app/common-types": ["libs/common-types/src/index.ts"]
+    }
   },
   "exclude": ["node_modules", "dist"]
 }

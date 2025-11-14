@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/services/property-ai",
+    "rootDir": "./src",
+    "types": ["node", "jest"],
+    "declaration": false, // Services typically don't need to generate .d.ts files
+    "declarationMap": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*spec.ts"],
+  "references": [
+    { "path": "../../libs/common-types" }
+
+  ]
+
+}
