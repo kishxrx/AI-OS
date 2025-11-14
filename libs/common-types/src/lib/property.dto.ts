@@ -6,7 +6,6 @@ import {
   ValidateNested,
   IsObject,
   IsEnum,
-  IsDate,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -34,21 +33,6 @@ export class AddressDto {
   @ApiProperty({ description: 'Country' })
   @IsString()
   country: string;
-}
-
-/* ---------------------------------------
- * Audit DTO
- * --------------------------------------- */
-export class AuditDto {
-  @ApiProperty({ description: 'Timestamp of creation', type: 'string', format: 'date-time' })
-  @IsDate()
-  @Type(() => Date)
-  createdAt: Date;
-
-  @ApiProperty({ description: 'Timestamp of last update', type: 'string', format: 'date-time' })
-  @IsDate()
-  @Type(() => Date)
-  updatedAt: Date;
 }
 
 /* ---------------------------------------
@@ -118,11 +102,6 @@ export class PropertyDto {
   @IsString({ each: true })
   amenities?: string[];
 
-  @ApiProperty({ type: () => AuditDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => AuditDto)
-  audit?: AuditDto;
 }
 
 /* ---------------------------------------
@@ -165,19 +144,4 @@ export class UnitDto {
   @IsEnum(UnitStatus)
   status: UnitStatus = UnitStatus.AVAILABLE;
 
-  @ApiProperty({
-    type: 'object',
-    description: 'Flexible specifications object',
-    required: false,
-    additionalProperties: true,
-  })
-  @IsOptional()
-  @IsObject()
-  specs?: Record<string, any>;
-
-  @ApiProperty({ type: () => AuditDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => AuditDto)
-  audit?: AuditDto;
 }
