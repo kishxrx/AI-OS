@@ -4,7 +4,6 @@ import {
   IsOptional,
   IsArray,
   ValidateNested,
-  IsObject,
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -14,21 +13,26 @@ import { ApiProperty } from '@nestjs/swagger';
  * Address DTO
  * --------------------------------------- */
 export class AddressDto {
-  @ApiProperty({ description: 'Street address' })
-  @IsString()
-  street: string;
-
-  @ApiProperty({ description: 'City' })
-  @IsString()
-  city: string;
-
   @ApiProperty({ description: 'State or province' })
   @IsString()
   state: string;
 
-  @ApiProperty({ description: 'Postal code' })
+  @ApiProperty({ description: 'Pincode' })
   @IsString()
-  postalCode: string;
+  pincode: string;
+
+  @ApiProperty({ description: 'Address Line 1' })
+  @IsString()
+  addressLine1: string;
+
+  @ApiProperty({ description: 'Address Line 2', required: false })
+  @IsOptional()
+  @IsString()
+  addressLine2?: string;
+
+  @ApiProperty({ description: 'City' })
+  @IsString()
+  city: string;
 
   @ApiProperty({ description: 'Country' })
   @IsString()
@@ -54,6 +58,7 @@ export class PropertyStatisticsDto {
 export enum PropertyStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
+  LOGICALLY_DELETED = 'LOGICALLY_DELETED',
 }
 
 /* ---------------------------------------
@@ -68,12 +73,20 @@ export class PropertyDto {
   @IsString()
   type: string;
 
-  @ApiProperty({ description: 'Primary image URL of the property', required: false })
+  @ApiProperty({
+    type: [String],
+    description: 'Array of image URLs for the property',
+    required: false,
+  })
   @IsOptional()
-  @IsString()
-  primaryImageUrl?: string;
+  @IsArray()
+  @IsString({ each: true })
+  imageUrls?: string[];
 
-  @ApiProperty({ type: () => AddressDto, description: 'Address of the property' })
+  @ApiProperty({
+    type: () => AddressDto,
+    description: 'Address of the property',
+  })
   @ValidateNested()
   @Type(() => AddressDto)
   address: AddressDto;
@@ -90,58 +103,22 @@ export class PropertyDto {
   @IsEnum(PropertyStatus)
   status: PropertyStatus = PropertyStatus.ACTIVE;
 
-  @ApiProperty({ type: () => PropertyStatisticsDto, required: false })
+  @ApiProperty({
+    type: () => PropertyStatisticsDto,
+    required: false,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => PropertyStatisticsDto)
   statistics?: PropertyStatisticsDto;
 
-  @ApiProperty({ type: [String], description: 'List of amenities', required: false })
+  @ApiProperty({
+    type: [String],
+    description: 'List of amenities',
+    required: false,
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   amenities?: string[];
-
-}
-
-/* ---------------------------------------
- * Unit Enums
- * --------------------------------------- */
-export enum UnitType {
-  FLAT = 'FLAT',
-  ROOM = 'ROOM',
-  BED = 'BED',
-  FLOOR = 'FLOOR',
-}
-
-export enum UnitStatus {
-  AVAILABLE = 'AVAILABLE',
-  OCCUPIED = 'OCCUPIED',
-  UNDER_MAINTENANCE = 'UNDER_MAINTENANCE',
-}
-
-/* ---------------------------------------
- * Unit DTO
- * --------------------------------------- */
-export class UnitDto {
-  @ApiProperty({ description: 'ID of the Property this unit belongs to' })
-  @IsString()
-  propertyId: string;
-
-  @ApiProperty({ enum: UnitType, description: 'Type of the unit' })
-  @IsEnum(UnitType)
-  unitType: UnitType;
-
-  @ApiProperty({ description: 'Human-friendly unit identifier (e.g., A-101)' })
-  @IsString()
-  unitIdentifier: string;
-
-  @ApiProperty({
-    enum: UnitStatus,
-    description: 'Current status of the unit',
-    default: UnitStatus.AVAILABLE,
-  })
-  @IsEnum(UnitStatus)
-  status: UnitStatus = UnitStatus.AVAILABLE;
-
 }

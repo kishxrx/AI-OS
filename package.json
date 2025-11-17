@@ -4,14 +4,15 @@
   "description": "Monorepo for PG-BusinessFlow-AI Autonomous Governance System",
   "private": true,
   "scripts": {
-  "test": "echo \"Error: no test specified\" && exit 1",
-  "build": "tsc -b",
-  "start:dev:property-ai": "ts-node -r tsconfig-paths/register services/property-ai/src/main.ts"
-},
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc -b",
+    "start:dev:property-ai": "ts-node -r tsconfig-paths/register services/property-ai/src/main.ts"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/firestore": "^8.0.0",
     "@nestjs/common": "^11.1.9",
     "@nestjs/core": "^11.1.9",
     "@nestjs/platform-express": "^11.1.9",
