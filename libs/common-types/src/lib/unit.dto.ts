@@ -25,7 +25,7 @@ export enum UnitStatus {
 /* ---------------------------------------
  * Unit DTO
  * --------------------------------------- */
-export class UnitDto {
+export class CreateUnitDto { 
   @ApiProperty({ description: 'ID of the Property this unit belongs to' })
   @IsString()
   propertyId: string;
@@ -53,4 +53,13 @@ export class UnitDto {
   @IsOptional()
   @IsNumber()
   quantity?: number; // e.g., 3 beds, 5 rooms, etc.
+}
+
+/* ---------------------------------------
+ * Unit DTO (for output/response)
+ * --------------------------------------- */
+export class UnitDto extends CreateUnitDto {
+  @ApiProperty({ description: 'Unique identifier of the unit' })
+  @IsString()
+  id: string;
 }

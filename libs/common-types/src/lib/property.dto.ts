@@ -62,9 +62,9 @@ export enum PropertyStatus {
 }
 
 /* ---------------------------------------
- * Property DTO
+ * Create Property DTO (for input)
  * --------------------------------------- */
-export class PropertyDto {
+export class CreatePropertyDto {
   @ApiProperty({ description: 'Name of the property' })
   @IsString()
   name: string;
@@ -121,4 +121,13 @@ export class PropertyDto {
   @IsArray()
   @IsString({ each: true })
   amenities?: string[];
+}
+
+/* ---------------------------------------
+ * Property DTO (for output/response)
+ * --------------------------------------- */
+export class PropertyDto extends CreatePropertyDto {
+  @ApiProperty({ description: 'Unique identifier of the property' })
+  @IsString()
+  id: string;
 }
