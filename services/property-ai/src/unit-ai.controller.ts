@@ -1,7 +1,8 @@
-import { Controller, Post, Body, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Logger, Get, Param, NotFoundException } from '@nestjs/common';
 import { UnitAiService } from './unit-ai.service';
 import { CreateUnitDto, UnitDto } from '@app/common-types';
-import { ApiTags, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiResponse, ApiBody, ApiParam, ApiNotFoundResponse } from '@nestjs/swagger';
+
 
 @ApiTags('units')
 @Controller('units')
@@ -19,5 +20,25 @@ export class UnitAiController {
     return this.unitAiService.createUnit(createUnitDto);
   }
 
-  // TODO: Implement other CRUD endpoints for units (GET /units, GET /units/:id, PUT /units/:id, DELETE /units/:id, PATCH /units/:id/logical-delete)
+  @Get()
+@ApiResponse({ status: 200, description: 'Returns all units.', type: [UnitDto] })
+async findAllUnits(): Promise<UnitDto[]> {
+  this.logger.log('Received request to find all units.');
+  return this.unitAiService.findAllUnits();
+}
+
+@Get(':id')
+@ApiParam({ name: 'id', description: 'The ID of the unit', type: String })
+@ApiResponse({ status: 200, description: 'Returns a single unit by ID.', type: UnitDto })
+@ApiNotFoundResponse({ description: 'Unit not found.' })
+async findUnitById(@Param('id') id: string): Promise<UnitDto> {
+  this.logger.log(`Received request to find unit by ID: ${id}`);
+  const unit = await this.unitAiService.findUnitById(id);
+  if (!unit) {
+    throw new NotFoundException(`Unit with ID "${id}" not found.`);
+  }
+  return unit;
+}
+
+  // TODO: Implement other CRUD endpoints for units (GET /units/:id, PUT /units/:id, DELETE /units/:id, PATCH /units/:id/logical-delete)
 }

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -b",
-    "start:dev:property-ai": "ts-node -r tsconfig-paths/register services/property-ai/src/main.ts"
+    "start:dev:property-ai":  "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/property-ai/src/main.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +19,7 @@
     "@nestjs/swagger": "^11.2.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "dotenv": "^17.2.3",
     "reflect-metadata": "^0.2.2",
     "tsconfig-paths": "^4.2.0"
   },

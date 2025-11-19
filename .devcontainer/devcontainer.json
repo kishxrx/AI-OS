@@ -28,6 +28,6 @@
       ]
     }
   },
-  "postCreateCommand": "npm install",
-  "postStartCommand": "source ./.env"
-}
+  "postCreateCommand": "npm install"
+  }
+

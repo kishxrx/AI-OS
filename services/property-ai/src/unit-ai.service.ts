@@ -22,5 +22,23 @@ export class UnitAiService {
     return createdUnit;
   }
 
-  // TODO: Implement other CRUD methods for units (findById, findAll, update, delete, logicalDelete)
+   async findUnitById(id: string): Promise<UnitDto | null> {
+  this.logger.log(`Attempting to find unit with ID: ${id}`);
+  const unit = await this.unitRepository.findById(id);
+  if (unit) {
+    this.logger.log(`Found unit with ID: ${id}`);
+  } else {
+    this.logger.warn(`Unit with ID: ${id} not found.`);
+  }
+  return unit;
+}
+
+async findAllUnits(): Promise<UnitDto[]> {
+  this.logger.log(`Attempting to find all units.`);
+  const units = await this.unitRepository.findAll();
+  this.logger.log(`Found ${units.length} units.`);
+  return units;
+}
+
+// TODO: Implement other CRUD methods for units (update, delete, logicalDelete)
 }
