@@ -2,8 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["libs/*/src"],
-      "@app/common-types": ["libs/common-types/src"]
+      "@app/*": ["./libs/*/src"],
+      "@app/common-types": ["./libs/common-types/src"]
     }
   }
 }
