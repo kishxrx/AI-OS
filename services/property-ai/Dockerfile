@@ -10,7 +10,6 @@ COPY package.json package-lock.json ./
 # Copy package.json for libs and services to help with caching if they have their own dependencies
 # In your case, they are empty, but it's a good practice for monorepos.
 COPY libs/common-types/package.json ./libs/common-types/
-COPY services/property-ai/package.json ./services/property-ai/
 
 # Install all dependencies from the root
 RUN npm install --omit=dev
