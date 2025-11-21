@@ -19,7 +19,7 @@ RUN npm install --omit=dev
 COPY . .
 
 # Build the entire project, including all dependencies
-RUN npm run build --workspace=services/property-ai
+RUN npm run build
 
 # Stage 2: Create the production image
 FROM node:18-alpine
