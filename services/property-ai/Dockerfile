@@ -40,4 +40,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Command to run the application
-ENTRYPOINT [ "node", "dist/services/property-ai/main.js" ]
+CMD ["npm", "start"]
