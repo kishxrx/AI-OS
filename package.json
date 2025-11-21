@@ -10,7 +10,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -b",
-    "start": "node -r tsconfig-paths/register dist/services/property-ai/main.js",
+    "start": "TS_NODE_BASE_URL=./dist node -r tsconfig-paths/register dist/services/property-ai/main.js",
     "start:dev:property-ai": "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/property-ai/src/main.ts"
   },
   "keywords": [],
