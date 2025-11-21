@@ -9,8 +9,8 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc -b",
-    "start": "TS_NODE_BASE_URL=./dist node -r tsconfig-paths/register dist/services/property-ai/main.js",
+    "build": "tsc -b && tsc-alias",
+    "start": "node dist/services/property-ai/main.js",
     "start:dev:property-ai": "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/property-ai/src/main.ts"
   },
   "keywords": [],
@@ -32,6 +32,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.10",
     "typescript": "^5.9.3"
   }
 }
