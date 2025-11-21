@@ -1,9 +1,15 @@
 {
   "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["./libs/*/src"],
-      "@app/common-types": ["./libs/common-types/src"]
+      "@app/*": ["libs/*/src"],
+      "@app/common-types": ["libs/common-types/src"]
     }
   }
 }
