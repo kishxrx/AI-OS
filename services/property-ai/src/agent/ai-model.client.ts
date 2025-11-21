@@ -51,8 +51,7 @@ export class AiModelClient {
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: text }
-          ],
-          response_format: { type: "json_object" }
+          ]
         }),
       });
 
