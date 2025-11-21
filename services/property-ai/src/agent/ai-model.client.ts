@@ -25,9 +25,8 @@ export class AiModelClient {
    * @returns A Promise that resolves to a structured MaintenanceAnalysisDto.
    */
   async analyzeMaintenanceRequest(text: string): Promise<MaintenanceAnalysisDto> {
-    this.logger.log(`Sending request to AI model for text: "${text}"`);
+    this.logger.log(`Analyzing maintenance request for OpenAI model: "${this.modelName}"`);
 
-    // If the API key isn't set, return a mock response for local testing without a key.
     if (!this.apiKey) {
       this.logger.warn('AI_MODEL_API_KEY not found. Returning a mock AI analysis for testing purposes.');
       const mockResponse: MaintenanceAnalysisDto = {
@@ -38,14 +37,9 @@ export class AiModelClient {
       return Promise.resolve(mockResponse);
     }
     
-    // Real API call logic
+    const systemPrompt = `You are a helpful assistant for a property management system. Your task is to analyze an unstructured maintenance request and provide a structured JSON response. The JSON object must conform to the following format: { "category": "string", "severity": "string", "entity": "string" }. The possible values for 'category' are 'Plumbing', 'Electrical', 'Structural', 'General'. The possible values for 'severity' are 'Low', 'Medium', 'High', 'Critical'. Respond only with the raw JSON object and nothing else.`;
+
     try {
-      const promptText = `Analyze the following maintenance request and provide a structured JSON response. The JSON should contain 'category' (e.g., Plumbing, Electrical, Structural, General), 'severity' (Low, Medium, High, Critical), and 'entity' (the primary object of the request, e.g., 'sink', 'light switch', 'roof').
-
-      Maintenance Request: "${text}"
-
-      Respond only with the JSON object.`;
-
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
@@ -54,32 +48,31 @@ export class AiModelClient {
         },
         body: JSON.stringify({
           model: this.modelName,
-          prompt: promptText,
-          // Add any other parameters specific to your AI API for structured output
-          response_format: { type: "json_object" } // Assuming the AI supports JSON response format
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text }
+          ],
+          response_format: { type: "json_object" }
         }),
       });
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({ message: 'No additional error info' }));
-        throw new Error(`AI API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
       }
 
       const data = await response.json();
-      // Assuming the AI returns a JSON object that directly matches MaintenanceAnalysisDto
-      // Or that the relevant part is in data.choices[0]?.message?.content
-      const aiResponseContent = data.choices[0]?.message?.content || data.generated_text;
-      
-      if (typeof aiResponseContent === 'string') {
-        return JSON.parse(aiResponseContent) as MaintenanceAnalysisDto;
-      } else if (typeof aiResponseContent === 'object') {
-        return aiResponseContent as MaintenanceAnalysisDto;
+      const aiResponseContent = data.choices[0]?.message?.content;
+
+      if (!aiResponseContent) {
+        throw new Error('AI response content is empty or in an unexpected format.');
       }
       
-      throw new Error('AI response content not in expected JSON format.');
+      // The AI's response content should be a JSON string, so we parse it.
+      return JSON.parse(aiResponseContent) as MaintenanceAnalysisDto;
 
     } catch (error) {
-      this.logger.error(`Error calling AI API: ${error.message}`);
+      this.logger.error(`Error calling OpenAI API: ${error.message}`);
       throw new InternalServerErrorException(`Failed to get response from AI: ${error.message}`);
     }
   }
