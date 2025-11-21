@@ -1,32 +1,44 @@
-# Use an official Node.js runtime as a parent image
-FROM node:18-alpine
+# Stage 1: Build the application
+FROM node:18-alpine AS builder
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json for the root and property-ai service
-# This allows npm to cache dependencies efficiently
-COPY package.json ./
-COPY package-lock.json ./
+# Copy root package files
+COPY package.json package-lock.json ./
+
+# Copy package.json for libs and services to help with caching if they have their own dependencies
+# In your case, they are empty, but it's a good practice for monorepos.
 COPY libs/common-types/package.json ./libs/common-types/
 COPY services/property-ai/package.json ./services/property-ai/
 
-# Install root dependencies and then common-types and property-ai dependencies
-RUN npm install --omit=dev && \
-    npm install --prefix libs/common-types --omit=dev && \
-    npm install --prefix services/property-ai --omit=dev
+# Install all dependencies from the root
+RUN npm install --omit=dev
 
-# Copy the rest of the application code
+# Copy the rest of the source code
+# This will include all services and libs
 COPY . .
 
-# Build the TypeScript project
-# The -b flag ensures all referenced projects (like common-types) are built
-RUN npm run build
+# Build the entire project, including all dependencies
+RUN npm run build --workspace=services/property-ai
+
+# Stage 2: Create the production image
+FROM node:18-alpine
+
+# Set the working directory
+WORKDIR /app
+
+# Copy production dependencies from the builder stage
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json ./package-lock.json
+
+
+# Copy the compiled code from the builder stage
+COPY --from=builder /app/dist ./dist
 
 # Expose the port the app runs on
 EXPOSE 3000
 
 # Command to run the application
-# Use the production build output
-CMD [ "node", "dist/services/property-ai/main.js" ]
-
+ENTRYPOINT [ "node", "dist/services/property-ai/main.js" ]
