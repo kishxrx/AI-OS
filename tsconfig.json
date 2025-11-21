@@ -18,9 +18,15 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
-    "paths": {
-      "@app/common-types": ["libs/common-types/src/index.ts"]
+        "paths": {
+          "@app/common-types": ["libs/common-types/src/index.ts"]
+        }
+      },
+      "files": [],
+      "references": [
+        { "path": "libs/common-types" },
+        { "path": "services/property-ai" }
+      ],
+      "exclude": ["node_modules", "dist"]
     }
-  },
-  "exclude": ["node_modules", "dist"]
-}
+    

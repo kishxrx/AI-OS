@@ -1,43 +1,25 @@
-# Stage 1: Build the application
-FROM node:18-alpine AS builder
-
-# Set the working directory
-WORKDIR /app
-
-# Copy root package files
-COPY package.json package-lock.json ./
-
-# Copy package.json for libs and services to help with caching if they have their own dependencies
-# In your case, they are empty, but it's a good practice for monorepos.
-COPY libs/common-types/package.json ./libs/common-types/
-
-# Install all dependencies from the root
-RUN npm install --omit=dev
-
-# Copy the rest of the source code
-# This will include all services and libs
-COPY . .
-
-# Build the entire project, including all dependencies
-RUN npm run build
-
-# Stage 2: Create the production image
+# Use an official Node.js runtime
 FROM node:18-alpine
 
-# Set the working directory
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy production dependencies from the builder stage
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json ./package-lock.json
-COPY --from=builder /app/tsconfig.json ./
+# Copy configuration files
+COPY package.json package-lock.json ./
+COPY tsconfig.json ./
+COPY libs/common-types/tsconfig.json ./libs/common-types/
+COPY services/property-ai/tsconfig.json ./services/property-ai/
 
-# Copy the compiled code from the builder stage
-COPY --from=builder /app/dist ./dist
+# Copy source code
+COPY libs ./libs
+COPY services ./services
 
-# Expose the port the app runs on
-EXPOSE 3000
+# Install dependencies. This will also link the local workspaces.
+RUN npm install --omit=dev
 
-# Command to run the application
+# Build the entire monorepo. 
+# tsc -b will follow the "references" in the tsconfig files.
+RUN npm run build
+
+# The start script in package.json points to the property-ai service
 CMD ["npm", "start"]
