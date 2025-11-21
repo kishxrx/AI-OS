@@ -8,9 +8,10 @@ import { UnitAiService } from './unit-ai.service';
 import { UnitAiController } from './unit-ai.controller';
 import { UnitFirestoreRepository } from './unit.firestore.repository';
 import { I_UNIT_REPOSITORY } from '@app/common-types';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
-  imports: [],
+  imports: [AgentModule],
   controllers: [PropertyAiController, UnitAiController],
   providers: [PropertyAiService, firestoreProvider,
 
