@@ -14,12 +14,15 @@ COPY services/property-ai/tsconfig.json ./services/property-ai/
 COPY libs ./libs
 COPY services ./services
 
-# Install production dependencies. This will also link the local workspaces.
-RUN npm install --omit=dev
+# Install ALL dependencies (including devDependencies) to get `tsc` for building.
+RUN npm install
 
 # Build the entire monorepo. 
 # tsc -b will follow the "references" in the corrected tsconfig.json.
 RUN npm run build
+
+# Prune the devDependencies after the build is complete to keep the image lean.
+RUN npm prune --production
 
 # The start script in package.json points to the property-ai service
 # and uses tsconfig-paths with the correct base URL.
