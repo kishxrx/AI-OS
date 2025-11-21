@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
@@ -9,7 +10,6 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
@@ -17,15 +17,12 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "esModuleInterop": true,
-                    "paths": {
-                      "@app/*": ["libs/*/src"]
-                    }      },
-      "files": [],
-      "references": [
-        { "path": "libs/common-types" },
-        { "path": "services/property-ai" }
-      ],
-      "exclude": ["node_modules", "dist"]
-    }
-    
+    "esModuleInterop": true
+  },
+  "files": [],
+  "references": [
+    { "path": "libs/common-types" },
+    { "path": "services/property-ai" }
+  ],
+  "exclude": ["node_modules", "dist"]
+}
