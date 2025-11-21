@@ -6,7 +6,8 @@
     "rootDir": "./src",
     "types": ["node", "jest"],
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "incremental": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*spec.ts"]
