@@ -18,9 +18,9 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
-            "paths": {
-              "@app/common-types": ["dist/libs/common-types"]
-            }      },
+                "paths": {
+                  "@app/common-types": ["libs/common-types/src"]
+                }      },
       "files": [],
       "references": [
         { "path": "libs/common-types" },
