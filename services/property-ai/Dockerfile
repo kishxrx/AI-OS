@@ -1,32 +1,32 @@
-# -------------------------------------------------------
-# 1. Builder Stage
-# -------------------------------------------------------
-FROM node:18-alpine AS builder
+# ----------- BUILD STAGE -----------
+FROM node:18 AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY tsconfig*.json ./
-COPY libs ./libs
-COPY services ./services
+# Copy the entire monorepo (IMPORTANT)
+COPY . .
 
+# Install all deps including devDependencies (tsc-alias)
 RUN npm install
 
+# Build using YOUR build script (tsc -b && tsc-alias)
 RUN npm run build
 
 
-# -------------------------------------------------------
-# 2. Runtime Stage
-# -------------------------------------------------------
-FROM node:18-alpine
+
+# ----------- RUNTIME STAGE -----------
+FROM node:18
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --production
-
+# Copy compiled output
 COPY --from=builder /app/dist ./dist
 
-ENV PORT=8080
+# Copy only production deps
+COPY package.json package-lock.json ./
 
-CMD ["node", "dist/services/property-ai/main.js"]
+RUN npm install --omit=dev
+
+EXPOSE 8080
+
+CMD ["node", "dist/main.js"]
