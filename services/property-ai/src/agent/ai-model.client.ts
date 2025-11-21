@@ -25,10 +25,9 @@ export class AiModelClient {
    * @returns A Promise that resolves to a structured MaintenanceAnalysisDto.
    */
   async analyzeMaintenanceRequest(text: string): Promise<MaintenanceAnalysisDto> {
-    this.logger.log(`Analyzing maintenance request: "${text}"`);
+    this.logger.log(`Sending request to AI model for text: "${text}"`);
 
-    // The API Key is not added yet, so we will return a mock response.
-    // This allows us to test the full application flow without making a real API call.
+    // If the API key isn't set, return a mock response for local testing without a key.
     if (!this.apiKey) {
       this.logger.warn('AI_MODEL_API_KEY not found. Returning a mock AI analysis for testing purposes.');
       const mockResponse: MaintenanceAnalysisDto = {
@@ -39,20 +38,49 @@ export class AiModelClient {
       return Promise.resolve(mockResponse);
     }
     
-    // Placeholder for the real API call logic
+    // Real API call logic
     try {
-      // Replace this with a real `fetch` call when the API key and URL are ready.
-      this.logger.log('Simulating successful AI API call...');
-      const mockResponse: MaintenanceAnalysisDto = {
-        category: 'Plumbing',
-        severity: 'High',
-        entity: 'kitchen sink',
-      };
-      return Promise.resolve(mockResponse);
+      const promptText = `Analyze the following maintenance request and provide a structured JSON response. The JSON should contain 'category' (e.g., Plumbing, Electrical, Structural, General), 'severity' (Low, Medium, High, Critical), and 'entity' (the primary object of the request, e.g., 'sink', 'light switch', 'roof').
+
+      Maintenance Request: "${text}"
+
+      Respond only with the JSON object.`;
+
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.modelName,
+          prompt: promptText,
+          // Add any other parameters specific to your AI API for structured output
+          response_format: { type: "json_object" } // Assuming the AI supports JSON response format
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({ message: 'No additional error info' }));
+        throw new Error(`AI API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+      }
+
+      const data = await response.json();
+      // Assuming the AI returns a JSON object that directly matches MaintenanceAnalysisDto
+      // Or that the relevant part is in data.choices[0]?.message?.content
+      const aiResponseContent = data.choices[0]?.message?.content || data.generated_text;
+      
+      if (typeof aiResponseContent === 'string') {
+        return JSON.parse(aiResponseContent) as MaintenanceAnalysisDto;
+      } else if (typeof aiResponseContent === 'object') {
+        return aiResponseContent as MaintenanceAnalysisDto;
+      }
+      
+      throw new Error('AI response content not in expected JSON format.');
 
     } catch (error) {
       this.logger.error(`Error calling AI API: ${error.message}`);
-      throw new InternalServerErrorException('Failed to get response from AI');
+      throw new InternalServerErrorException(`Failed to get response from AI: ${error.message}`);
     }
   }
 }
