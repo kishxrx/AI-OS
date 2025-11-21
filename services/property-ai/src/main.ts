@@ -18,8 +18,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document); // 'api' is the path to access Swagger UI
 
-  await app.listen(port);
-  Logger.log(`Property AI Ministry is running on: http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`Property AI Ministry is running on port: ${port}`);
   Logger.log(`Swagger UI available at: http://localhost:${port}/api`);
 }
 
