@@ -10,7 +10,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prebuild": "rm -rf dist && rm -f *.tsbuildinfo",
-    "build": "tsc -b && tsc-alias",
+    "build": "tsc -b services/property-ai && tsc-alias -p services/property-ai/tsconfig.json",
     "start": "node dist/services/property-ai/main.js",
     "start:dev:property-ai": "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/property-ai/src/main.ts"
   },
