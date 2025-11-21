@@ -5,7 +5,11 @@
     "rootDir": "./src",
     "types": ["node", "jest"],
     "declaration": false, // Services typically don't need to generate .d.ts files
-    "declarationMap": false
+    "declarationMap": false,
+    "baseUrl": "../../",
+    "paths": {
+      "@app/common-types": ["libs/common-types/src"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*spec.ts"],
