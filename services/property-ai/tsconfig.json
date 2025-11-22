@@ -1,25 +1,25 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
-    "sourceMap": true,
-    "outDir": "../../dist",
+    "outDir": "../../dist/services/property-ai",
     "rootDir": "./src",
-    "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
+
     "composite": true,
     "incremental": true,
-    "tsBuildInfoFile": "../../dist/services/property-ai/.tsbuildinfo"
+    "tsBuildInfoFile": "../../dist/services/property-ai/.tsbuildinfo",
+
+    "target": "ES2021",
+    "module": "commonjs",
+
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+
+    "plugins": [
+      { "transform": "@nestjs/swagger/plugin" }
+    ]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*spec.ts"],
   "references": [
     { "path": "../../libs/common-types" }

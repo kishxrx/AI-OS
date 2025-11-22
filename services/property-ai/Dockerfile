@@ -1,32 +1,35 @@
-# ----------- BUILD STAGE -----------
+# ------------ BUILD STAGE ------------
 FROM node:18 AS builder
 
+# WORKDIR must be the repo root, NOT inside the service
 WORKDIR /app
 
-# Copy the entire monorepo (IMPORTANT)
+# Copy entire monorepo from the build context
 COPY . .
 
-# Install all deps including devDependencies (tsc-alias)
+# Install dependencies for whole monorepo
 RUN npm install
 
-# Build using YOUR build script (tsc -b && tsc-alias)
+# Build the entire monorepo (libs + property-ai)
 RUN npm run build
 
 
 
-# ----------- RUNTIME STAGE -----------
+# ------------ RUNTIME STAGE ----------
 FROM node:18
 
 WORKDIR /app
 
-# Copy compiled output
-COPY --from=builder /app/dist ./dist
+# Copy ONLY the built output needed for this service
+COPY --from=builder /app/dist/libs ./dist/libs
+COPY --from=builder /app/dist/services/property-ai ./dist/services/property-ai
 
-# Copy only production deps
+# Copy package.json files
 COPY package.json package-lock.json ./
 
+# Install only prod dependencies
 RUN npm install --omit=dev
 
 EXPOSE 8080
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/services/property-ai/main.js"]

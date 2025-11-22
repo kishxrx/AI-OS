@@ -7,6 +7,7 @@
     "skipLibCheck": true,
     "strictNullChecks": false,
     "moduleResolution": "node",
+
     "baseUrl": ".",
     "paths": {
       "@app/*": ["libs/*/src"],
