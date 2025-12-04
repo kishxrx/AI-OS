@@ -8,9 +8,9 @@
     "services/*"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "ts-node -r tsconfig-paths/register --project tsconfig.json scripts/test-master-ai.ts",
     "prebuild": "rm -rf dist && rm -f *.tsbuildinfo",
-    "build": "tsc -b libs/common-types && tsc -b services/property-ai",
+    "build": "tsc -b",
     "start": "node dist/services/property-ai/main.js",
     "start:dev:property-ai": "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/property-ai/src/main.ts"
   },

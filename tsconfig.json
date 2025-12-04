@@ -6,6 +6,10 @@
   "files": [],
   "references": [
     { "path": "libs/common-types" },
-    { "path": "services/property-ai" }
+    { "path": "libs/opa-client" },
+    { "path": "libs/pubsub-sdk" },
+    { "path": "libs/mcp-sdk" },
+    { "path": "services/property-ai" },
+    { "path": "services/master-ai" }
   ]
 }
