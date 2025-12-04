@@ -46,7 +46,7 @@ export class PropertyFirestoreRepository implements IPropertyRepository {
   async findAll(): Promise<PropertyDto[]> {
     try {
       const snapshot = await this.firestore.collection(this.collection).get();
-      return snapshot.docs.map((doc) => doc.data() as PropertyDto);
+      return this.excludeLogicallyDeleted(snapshot.docs.map((doc) => doc.data() as PropertyDto));
     } catch (error) {
       this.logger.error(`Error finding all properties: ${error.message}`);
       throw error;
@@ -54,23 +54,24 @@ export class PropertyFirestoreRepository implements IPropertyRepository {
   }
 
   async findByName(name: string): Promise<PropertyDto[]> {
-  try {
-    this.logger.log(`Searching for properties with name: "${name}"`);
+    try {
+      this.logger.log(`Searching for properties with name: "${name}"`);
 
-    const snapshot = await this.firestore
-      .collection(this.collection)
-      .where('name', '==', name) // Query for exact match
-      .get();
+      const snapshot = await this.firestore
+        .collection(this.collection)
+        .where('name', '==', name) // Query for exact match
+        .get();
 
-    const properties = snapshot.docs.map(doc => doc.data() as PropertyDto);
+      const properties = snapshot.docs.map((doc) => doc.data() as PropertyDto);
+      const filtered = this.excludeLogicallyDeleted(properties);
 
-    this.logger.log(`Found ${properties.length} properties matching name: "${name}"`);
-    return properties;
-  } catch (error) {
-    this.logger.error(`Error finding properties by name "${name}": ${error.message}`);
-    throw error;
+      this.logger.log(`Found ${filtered.length} properties matching name: "${name}"`);
+      return filtered;
+    } catch (error) {
+      this.logger.error(`Error finding properties by name "${name}": ${error.message}`);
+      throw error;
+    }
   }
-}
 
 
   async update(id: string, property: Partial<PropertyDto>): Promise<PropertyDto> {
@@ -105,5 +106,11 @@ export class PropertyFirestoreRepository implements IPropertyRepository {
       this.logger.error(`Error logically deleting property with ID ${id}: ${error.message}`);
       throw error;
     }
+  }
+
+  private excludeLogicallyDeleted(properties: PropertyDto[]): PropertyDto[] {
+    return properties.filter(
+      (property) => property.status !== PropertyStatus.LOGICALLY_DELETED,
+    );
   }
 }

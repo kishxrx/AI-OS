@@ -47,7 +47,7 @@ export class UnitFirestoreRepository implements IUnitRepository {
   async findAll(): Promise<UnitDto[]> {
     try {
       const snapshot = await this.firestore.collection(this.collection).get();
-      return snapshot.docs.map((doc) => doc.data() as UnitDto);
+      return this.excludeMaintenanceUnits(snapshot.docs.map((doc) => doc.data() as UnitDto));
     } catch (error) {
       this.logger.error(`Error finding all units: ${error.message}`);
       throw error;
@@ -62,7 +62,7 @@ export class UnitFirestoreRepository implements IUnitRepository {
         .get();
       const units = snapshot.docs.map((doc) => doc.data() as UnitDto);
       this.logger.log(`Found ${units.length} units for property ${propertyId}.`);
-      return units;
+      return this.excludeMaintenanceUnits(units);
     } catch (error) {
       this.logger.error(
         `Error finding units for property ${propertyId}: ${error.message}`,
@@ -103,5 +103,9 @@ export class UnitFirestoreRepository implements IUnitRepository {
       this.logger.error(`Error logically deleting unit with ID ${id}: ${error.message}`);
       throw error;
     }
+  }
+
+  private excludeMaintenanceUnits(units: UnitDto[]): UnitDto[] {
+    return units.filter((unit) => unit.status !== UnitStatus.UNDER_MAINTENANCE);
   }
 }
