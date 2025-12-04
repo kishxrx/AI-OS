@@ -54,6 +54,23 @@ export class UnitFirestoreRepository implements IUnitRepository {
     }
   }
 
+  async findByPropertyId(propertyId: string): Promise<UnitDto[]> {
+    try {
+      const snapshot = await this.firestore
+        .collection(this.collection)
+        .where('propertyId', '==', propertyId)
+        .get();
+      const units = snapshot.docs.map((doc) => doc.data() as UnitDto);
+      this.logger.log(`Found ${units.length} units for property ${propertyId}.`);
+      return units;
+    } catch (error) {
+      this.logger.error(
+        `Error finding units for property ${propertyId}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
   async update(id: string, unit: Partial<UnitDto>): Promise<UnitDto> {
     try {
       const docRef = this.firestore.collection(this.collection).doc(id);

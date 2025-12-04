@@ -7,7 +7,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 /* ---------------------------------------
  * Address DTO
@@ -131,3 +131,5 @@ export class PropertyDto extends CreatePropertyDto {
   @IsString()
   id: string;
 }
+
+export class UpdatePropertyDto extends PartialType(CreatePropertyDto) {}

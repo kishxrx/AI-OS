@@ -7,9 +7,16 @@ import {
   NotFoundException,
   Query,
   Logger,
+  Put,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import { PropertyAiService } from './property-ai.service';
-import { CreatePropertyDto, PropertyDto } from '@app/common-types';
+import {
+  CreatePropertyDto,
+  PropertyDto,
+  UpdatePropertyDto,
+} from '@app/common-types';
 import {
   ApiTags,
   ApiResponse,
@@ -17,6 +24,7 @@ import {
   ApiParam,
   ApiQuery,
   ApiNotFoundResponse,
+  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 
 @ApiTags('properties') // Swagger group tag
@@ -64,5 +72,38 @@ export class PropertyAiController {
   async findAllProperties(): Promise<PropertyDto[]> {
     this.logger.log('Find all properties');
     return this.propertyAiService.findAllProperties();
+  }
+
+  @Put(':id')
+  @ApiParam({ name: 'id', description: 'Property ID', type: String })
+  @ApiBody({ type: UpdatePropertyDto })
+  @ApiResponse({ status: 200, description: 'Property updated.', type: PropertyDto })
+  @ApiNotFoundResponse({ description: 'Property not found.' })
+  async updateProperty(
+    @Param('id') id: string,
+    @Body() updatePropertyDto: UpdatePropertyDto,
+  ): Promise<PropertyDto> {
+    this.logger.log(`Update property ${id}: ${JSON.stringify(updatePropertyDto)}`);
+    return this.propertyAiService.updateProperty(id, updatePropertyDto);
+  }
+
+  @Patch(':id/logical-delete')
+  @ApiParam({ name: 'id', description: 'Property ID to logically delete', type: String })
+  @ApiResponse({ status: 200, description: 'Property logically deleted.' })
+  @ApiBadRequestResponse({ description: 'Pre-checks failed or property blocked.' })
+  async logicalDeleteProperty(@Param('id') id: string): Promise<{ message: string }> {
+    this.logger.log(`Logical delete request for property: ${id}`);
+    await this.propertyAiService.logicalDeleteProperty(id);
+    return { message: 'Property marked as logically deleted.' };
+  }
+
+  @Delete(':id')
+  @ApiParam({ name: 'id', description: 'Property ID to hard delete', type: String })
+  @ApiResponse({ status: 200, description: 'Property hard deleted.' })
+  @ApiBadRequestResponse({ description: 'Pre-checks failed or property blocked.' })
+  async hardDeleteProperty(@Param('id') id: string): Promise<{ message: string }> {
+    this.logger.log(`Hard delete request for property: ${id}`);
+    await this.propertyAiService.hardDeleteProperty(id);
+    return { message: 'Property hard deleted.' };
   }
 }

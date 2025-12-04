@@ -4,7 +4,7 @@ import {
   IsOptional,
   IsEnum,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 /* ---------------------------------------
  * Unit Enums
@@ -63,3 +63,5 @@ export class UnitDto extends CreateUnitDto {
   @IsString()
   id: string;
 }
+
+export class UpdateUnitDto extends PartialType(CreateUnitDto) {}
