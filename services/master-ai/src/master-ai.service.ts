@@ -10,6 +10,7 @@ import {
 } from '@app/common-types';
 import { McpActionResult, McpCheckResult } from '@app/mcp-sdk';
 import { MasterAiClient } from './master-ai.client';
+import { mapToCanonicalTask } from './tool-registry';
 
 @Injectable()
 export class MasterAiService implements OnModuleInit {
@@ -135,11 +136,20 @@ export class MasterAiService implements OnModuleInit {
     if (checkActions.length > 0) {
       return await Promise.all(
         checkActions.map((action) =>
-          this.mcpClient.askMinistry(action.ministry, action.task, {
-            propertyId: event.propertyId,
-            payload: event.payload,
-            reason: action.reason,
-          }),
+          (async () => {
+            const canonicalTask = mapToCanonicalTask(action.task);
+            if (!canonicalTask) {
+              const details = `Unsupported check task "${action.task ?? '<missing>'}" for ministry ${action.ministry}`;
+              this.logger.warn(details);
+              return { ministry: action.ministry, cleared: false, details };
+            }
+
+            return this.mcpClient.askMinistry(action.ministry, canonicalTask, {
+              propertyId: event.propertyId,
+              payload: event.payload,
+              reason: action.reason,
+            });
+          })(),
         ),
       );
     }
@@ -181,16 +191,30 @@ export class MasterAiService implements OnModuleInit {
     };
 
     if (executeActions.length === 0) {
-      return [await this.mcpClient.executeMinistryAction('property', event.action, payload)];
+      const canonicalTask = mapToCanonicalTask(event.action);
+      if (!canonicalTask) {
+        const details = `Unsupported primary action "${event.action}" for execution`;
+        this.logger.warn(details);
+        return [{ success: false, details }];
+      }
+
+      return [await this.mcpClient.executeMinistryAction('property', canonicalTask, payload)];
     }
 
     return await Promise.all(
-      executeActions.map((action) =>
-        this.mcpClient.executeMinistryAction(action.ministry, action.task, {
+      executeActions.map(async (action) => {
+        const canonicalTask = mapToCanonicalTask(action.task);
+        if (!canonicalTask) {
+          const details = `Unsupported execute task "${action.task ?? '<missing>'}" for ministry ${action.ministry}`;
+          this.logger.warn(details);
+          return { success: false, details };
+        }
+
+        return this.mcpClient.executeMinistryAction(action.ministry, canonicalTask, {
           ...payload,
           reason: action.reason,
-        }),
-      ),
+        });
+      }),
     );
   }
 }

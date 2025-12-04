@@ -15,7 +15,7 @@ export class AiModelClient {
 
   constructor() {
     this.apiKey = process.env.AI_MODEL_API_KEY;
-    this.apiUrl = process.env.AI_MODEL_API_URL || 'https://api.fake-ai.com/v1/generate';
+    this.apiUrl = process.env.AI_MODEL_URL || 'https://api.fake-ai.com/v1/generate';
     this.modelName = process.env.AI_MODEL_NAME || 'default-model';
   }
 

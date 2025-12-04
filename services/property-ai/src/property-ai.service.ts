@@ -45,8 +45,10 @@ export class PropertyAiService {
     UnitStatus.OCCUPIED,
     UnitStatus.UNDER_MAINTENANCE,
   ];
-  private readonly lifecycleSubscriptionName: string =
-    process.env.PROPERTY_EVENTS_SUBSCRIPTION ?? 'property-events';
+  private readonly lifecycleTopicName: string =
+    process.env.PROPERTY_EVENTS_TOPIC ??
+    process.env.PROPERTY_EVENTS_SUBSCRIPTION ??
+    'property-events';
 
   constructor(
     @Inject(I_PROPERTY_REPOSITORY)
@@ -191,8 +193,8 @@ export class PropertyAiService {
     property: PropertyDto,
     extraPayload: Record<string, unknown> = {},
   ): void {
-    if (!this.lifecycleSubscriptionName) {
-      this.logger.warn('Property lifecycle subscription is not configured; skipping event.');
+    if (!this.lifecycleTopicName) {
+      this.logger.warn('Property lifecycle topic is not configured; skipping event.');
       return;
     }
 
@@ -208,7 +210,7 @@ export class PropertyAiService {
       timestamp: new Date().toISOString(),
     };
 
-    this.pubSubClient.publish(this.lifecycleSubscriptionName, event);
+    void this.pubSubClient.publish(this.lifecycleTopicName, event);
     this.logger.log(`Published lifecycle event ${event.eventId} for action ${action}`);
   }
 

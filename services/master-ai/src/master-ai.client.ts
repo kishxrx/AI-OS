@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MasterAiAction, MasterAiPlan, PropertyLifecycleEvent } from '@app/common-types';
+import { MasterAiPlan, PropertyLifecycleEvent } from '@app/common-types';
+import { TOOL_TASK_PROMPT, mapToCanonicalTask } from './tool-registry';
 
 @Injectable()
 export class MasterAiClient {
@@ -12,7 +13,7 @@ export class MasterAiClient {
     this.apiKey = process.env.MASTER_AI_API_KEY || process.env.AI_MODEL_API_KEY;
     this.apiUrl =
       process.env.MASTER_AI_API_URL ||
-      process.env.AI_MODEL_API_URL ||
+      process.env.AI_MODEL_URL ||
       'https://api.openai.com/v1/chat/completions';
     this.modelName = process.env.MASTER_AI_MODEL_NAME || 'gpt-4.1-mini';
   }
@@ -31,7 +32,7 @@ export class MasterAiClient {
       },
       {
         role: 'user',
-        content: `Event details:\n${JSON.stringify(event, null, 2)}\n\nReturn only JSON with this shape: { "narrative": "...", "actions": [ { "ministry": "property|finance|legal", "task": "string", "type": "check|execute", "reason": "why", } ] }. Use "check" to represent pre-flight questions and "execute" for final commands.`,
+        content: `Event details:\n${JSON.stringify(event, null, 2)}\n\nYou must choose tasks from this whitelist only: ${TOOL_TASK_PROMPT}. Return only JSON with this shape: { "narrative": "...", "actions": [ { "ministry": "property|finance|legal", "task": "string", "type": "check|execute", "reason": "why", } ] }. Use "check" to represent pre-flight questions and "execute" for final commands.`,
       },
     ];
 
@@ -72,10 +73,18 @@ export class MasterAiClient {
   private normalizePlan(plan: MasterAiPlan): MasterAiPlan {
     return {
       narrative: plan.narrative ?? 'No narrative provided',
-      actions: (plan.actions ?? []).map((action) => ({
-        ...action,
-        type: action.type ?? 'execute',
-      })),
+      actions: (plan.actions ?? []).map((action) => {
+        const canonicalTask = mapToCanonicalTask(action.task);
+        if (!canonicalTask && action.task) {
+          this.logger.warn(`Master AI returned unsupported task '${action.task}'. It will be validated later.`);
+        }
+
+        return {
+          ...action,
+          task: canonicalTask ?? action.task,
+          type: action.type ?? 'execute',
+        };
+      }),
     };
   }
 

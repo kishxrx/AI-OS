@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/firestore": "^8.0.0",
+    "@google-cloud/pubsub": "^5.2.0",
     "@nestjs/common": "^11.1.9",
     "@nestjs/core": "^11.1.9",
     "@nestjs/platform-express": "^11.1.9",
