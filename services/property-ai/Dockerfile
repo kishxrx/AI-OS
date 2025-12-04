@@ -30,6 +30,11 @@ COPY package.json package-lock.json ./
 # Install only prod dependencies
 RUN npm install --omit=dev
 
+RUN mkdir -p node_modules/@app \
+    && cp -R dist/libs/common-types node_modules/@app/common-types
+
+ENV PORT=8080
+
 EXPOSE 8080
 
 CMD ["node", "dist/services/property-ai/main.js"]

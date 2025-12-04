@@ -1,11 +1,15 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { PropertyAiModule } from './property-ai.module';
 import { Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(PropertyAiModule);
+  const app = await NestFactory.create<NestExpressApplication>(PropertyAiModule);
   const port = process.env.PORT || 3000;
+
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.get('/', (_, res) => res.redirect('/api'));
 
   // Setup Swagger (OpenAPI)
   const config = new DocumentBuilder()

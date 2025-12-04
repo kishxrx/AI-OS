@@ -7,11 +7,16 @@
     "skipLibCheck": true,
     "strictNullChecks": false,
     "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
 
     "baseUrl": ".",
+    "lib": ["ES2021", "DOM"],
     "paths": {
-      "@app/*": ["libs/*/src"],
-      "@app/common-types": ["libs/common-types/src"]
-    }
+      "@app/*": ["dist/libs/*", "libs/*/src"],
+      "@app/common-types": ["dist/libs/common-types", "libs/common-types/src"]
+    },
+    "typeRoots": ["./types", "node_modules/@types"]
   }
 }

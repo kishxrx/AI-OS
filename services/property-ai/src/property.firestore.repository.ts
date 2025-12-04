@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Firestore } from '@google-cloud/firestore';
 import {
+  CreatePropertyDto,
   IPropertyRepository,
   PropertyDto,
   PropertyStatus,
@@ -14,7 +15,7 @@ export class PropertyFirestoreRepository implements IPropertyRepository {
 
   constructor(@Inject(FIRESTORE) private firestore: Firestore) {}
 
-  async create(property: PropertyDto): Promise<PropertyDto> {
+  async create(property: CreatePropertyDto): Promise<PropertyDto> {
     try {
       const docRef = this.firestore.collection(this.collection).doc();
       const newProperty = { ...property, id: docRef.id };
