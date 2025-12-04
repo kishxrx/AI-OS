@@ -3,11 +3,13 @@ import { PubSubClient, PubSubMessage } from '@app/pubsub-sdk';
 import { OpaClient } from '@app/opa-client';
 import { McpClient } from '@app/mcp-sdk';
 import {
+  MasterAiPlan,
   PropertyLifecycleEvent,
   PropertyLifecycleAction,
   ReasoningSnapshot,
 } from '@app/common-types';
-import { McpCheckResult } from '@app/mcp-sdk';
+import { McpActionResult, McpCheckResult } from '@app/mcp-sdk';
+import { MasterAiClient } from './master-ai.client';
 
 @Injectable()
 export class MasterAiService implements OnModuleInit {
@@ -19,6 +21,7 @@ export class MasterAiService implements OnModuleInit {
     private readonly pubSubClient: PubSubClient,
     private readonly opaClient: OpaClient,
     private readonly mcpClient: McpClient,
+    private readonly masterAiClient: MasterAiClient,
   ) {}
 
   onModuleInit(): void {
@@ -73,7 +76,10 @@ export class MasterAiService implements OnModuleInit {
       return snapshot;
     }
 
-    const checks = await this.runCrossChecks(event);
+    const plan = await this.masterAiClient.createPlan(event);
+    snapshot.plan = plan;
+
+    const checks = await this.runCrossChecks(event, plan);
     snapshot.checkResults = checks.map((check) => ({
       ministry: check.ministry,
       cleared: check.cleared,
@@ -89,21 +95,18 @@ export class MasterAiService implements OnModuleInit {
       return snapshot;
     }
 
-    const actionResult = await this.mcpClient.executeMinistryAction(
-      'property',
-      event.action,
-      { propertyId: event.propertyId, payload: event.payload },
-    );
+    const executionResults = await this.executePlanActions(event, plan);
+    const failedResult = executionResults.find((result) => !result.success);
 
-    if (!actionResult.success) {
-      snapshot.details = `Action failed: ${actionResult.details}`;
+    if (failedResult) {
+      snapshot.details = `Action failed: ${failedResult.details}`;
       this.snapshots.push(snapshot);
-      this.logger.error('Failed to execute ministry action', actionResult.details);
+      this.logger.error('Failed to execute ministry action', failedResult.details);
       return snapshot;
     }
 
     snapshot.decision = 'approved';
-    snapshot.details = actionResult.details;
+    snapshot.details = executionResults.map((result) => result.details).join(' | ');
     this.snapshots.push(snapshot);
     this.logger.log(`Master AI approved ${event.action} for ${event.propertyId}`);
     return snapshot;
@@ -124,7 +127,27 @@ export class MasterAiService implements OnModuleInit {
     }
   }
 
-  private async runCrossChecks(event: PropertyLifecycleEvent): Promise<McpCheckResult[]> {
+  private async runCrossChecks(
+    event: PropertyLifecycleEvent,
+    plan: MasterAiPlan,
+  ): Promise<McpCheckResult[]> {
+    const checkActions = plan.actions.filter((action) => action.type === 'check');
+    if (checkActions.length > 0) {
+      return await Promise.all(
+        checkActions.map((action) =>
+          this.mcpClient.askMinistry(action.ministry, action.task, {
+            propertyId: event.propertyId,
+            payload: event.payload,
+            reason: action.reason,
+          }),
+        ),
+      );
+    }
+
+    return this.runDefaultCrossChecks(event);
+  }
+
+  private async runDefaultCrossChecks(event: PropertyLifecycleEvent): Promise<McpCheckResult[]> {
     if (event.action === 'create_property') {
       return [
         await this.mcpClient.askMinistry('property', 'duplicate-check', {
@@ -145,5 +168,29 @@ export class MasterAiService implements OnModuleInit {
         propertyId: event.propertyId,
       }),
     ]);
+  }
+
+  private async executePlanActions(
+    event: PropertyLifecycleEvent,
+    plan: MasterAiPlan,
+  ): Promise<McpActionResult[]> {
+    const executeActions = plan.actions.filter((action) => action.type !== 'check');
+    const payload = {
+      propertyId: event.propertyId,
+      payload: event.payload,
+    };
+
+    if (executeActions.length === 0) {
+      return [await this.mcpClient.executeMinistryAction('property', event.action, payload)];
+    }
+
+    return await Promise.all(
+      executeActions.map((action) =>
+        this.mcpClient.executeMinistryAction(action.ministry, action.task, {
+          ...payload,
+          reason: action.reason,
+        }),
+      ),
+    );
   }
 }

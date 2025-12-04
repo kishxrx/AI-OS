@@ -8,5 +8,11 @@
     "declarationMap": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*spec.ts"]
+  "exclude": ["node_modules", "dist", "**/*spec.ts"],
+  "references": [
+    { "path": "../../libs/common-types" },
+    { "path": "../../libs/mcp-sdk" },
+    { "path": "../../libs/opa-client" },
+    { "path": "../../libs/pubsub-sdk" }
+  ]
 }

@@ -4,10 +4,11 @@ import { MasterAiController } from './master-ai.controller';
 import { PubSubClient } from '@app/pubsub-sdk';
 import { OpaClient } from '@app/opa-client';
 import { McpClient } from '@app/mcp-sdk';
+import { MasterAiClient } from './master-ai.client';
 
 @Module({
   imports: [],
   controllers: [MasterAiController],
-  providers: [MasterAiService, PubSubClient, OpaClient, McpClient],
+  providers: [MasterAiService, PubSubClient, OpaClient, McpClient, MasterAiClient],
 })
 export class MasterAiModule {}

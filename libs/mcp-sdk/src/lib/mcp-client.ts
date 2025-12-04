@@ -36,7 +36,7 @@ export class McpClient {
     try {
       const response = await fetch(`${endpoint}/${action}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-MCP-Phase': 'check' },
         body: JSON.stringify(payload),
       });
 
@@ -62,7 +62,7 @@ export class McpClient {
     try {
       const response = await fetch(`${endpoint}/${action}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-MCP-Phase': 'execute' },
         body: JSON.stringify(payload),
       });
 

@@ -8,7 +8,7 @@
     "services/*"
   ],
   "scripts": {
-    "test": "ts-node -r tsconfig-paths/register --project tsconfig.json scripts/test-master-ai.ts",
+    "test": "ts-node -r tsconfig-paths/register --project tsconfig.json dev/test-master-ai.ts",
     "prebuild": "rm -rf dist && rm -f *.tsbuildinfo",
     "build": "tsc -b",
     "start": "node dist/services/property-ai/main.js",

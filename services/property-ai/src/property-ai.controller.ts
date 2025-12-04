@@ -27,6 +27,14 @@ import {
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
 
+interface DuplicateCheckRequest {
+  propertyId?: string;
+  payload?: {
+    property?: Partial<PropertyDto>;
+    [key: string]: unknown;
+  };
+}
+
 @ApiTags('properties') // Swagger group tag
 @Controller('properties')
 export class PropertyAiController {
@@ -45,6 +53,32 @@ export class PropertyAiController {
   @ApiBody({ type: CreatePropertyDto }) // Request body type
   async createProperty(@Body() createPropertyDto: CreatePropertyDto): Promise<PropertyDto> {
     this.logger.log(`Create property: ${JSON.stringify(createPropertyDto)}`);
+    return this.propertyAiService.createProperty(createPropertyDto);
+  }
+
+  @Post('duplicate-check')
+  @ApiBody({ description: 'Pre-flight duplicate check payload', required: false })
+  @ApiResponse({
+    status: 200,
+    description: 'Duplicate check result',
+    schema: {
+      type: 'object',
+      properties: {
+        cleared: { type: 'boolean' },
+        details: { type: 'string' },
+      },
+    },
+  })
+  async duplicateCheck(@Body() body: DuplicateCheckRequest): Promise<{ cleared: boolean; details: string }> {
+    this.logger.log(`Duplicate check request for propertyId=${body.propertyId ?? 'unknown'}`);
+    return this.propertyAiService.duplicateCheck(body);
+  }
+
+  @Post('create_property')
+  @ApiBody({ type: CreatePropertyDto })
+  @ApiResponse({ status: 201, description: 'Property created via ministry automation.', type: PropertyDto })
+  async executeCreateProperty(@Body() createPropertyDto: CreatePropertyDto): Promise<PropertyDto> {
+    this.logger.log('Execute create_property request received');
     return this.propertyAiService.createProperty(createPropertyDto);
   }
 

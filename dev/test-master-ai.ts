@@ -7,6 +7,7 @@ import {
   PropertyLifecycleEvent,
 } from '@app/common-types';
 import { McpCheckResult } from '@app/mcp-sdk';
+import { MasterAiClient } from '../services/master-ai/src/master-ai.client';
 
 interface TestSetupOptions {
   opaAllowed?: boolean;
@@ -55,10 +56,26 @@ function createTestService(options: TestSetupOptions = {}): MasterAiService {
     }),
   };
 
+  const masterAiClient = {
+    async createPlan(event: PropertyLifecycleEvent) {
+      const narrative = `test plan for ${event.action}`;
+      return {
+        narrative,
+        actions: [
+          { ministry: 'property', task: 'duplicate-check', type: 'check', reason: 'test duplicate' },
+          { ministry: 'finance', task: 'balance-check', type: 'check', reason: 'test balance' },
+          { ministry: 'legal', task: 'hold-check', type: 'check', reason: 'test hold' },
+          { ministry: 'property', task: event.action, type: 'execute', reason: 'test execute' },
+        ],
+      };
+    },
+  } as MasterAiClient;
+
   return new MasterAiService(
     pubSubStub as any,
     opaClient as any,
     mcpClient as any,
+    masterAiClient,
   );
 }
 

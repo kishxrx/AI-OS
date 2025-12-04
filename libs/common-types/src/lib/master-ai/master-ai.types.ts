@@ -3,6 +3,8 @@ export type PropertyLifecycleAction =
   | 'logical_delete_property'
   | 'hard_delete_property';
 
+export type MasterAiMinistry = 'property' | 'finance' | 'legal';
+
 export interface PermissionAwareUser {
   id: string;
   role: string;
@@ -18,6 +20,18 @@ export interface PropertyLifecycleEvent {
   timestamp?: string;
 }
 
+export interface MasterAiAction {
+  ministry: MasterAiMinistry;
+  task: string;
+  reason?: string;
+  type?: 'check' | 'execute';
+}
+
+export interface MasterAiPlan {
+  narrative: string;
+  actions: MasterAiAction[];
+}
+
 export interface ReasoningSnapshot {
   eventId: string;
   action: PropertyLifecycleAction;
@@ -28,4 +42,5 @@ export interface ReasoningSnapshot {
   decision: 'approved' | 'rejected';
   details?: string;
   timestamp: string;
+  plan?: MasterAiPlan;
 }

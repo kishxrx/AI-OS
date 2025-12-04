@@ -22,6 +22,7 @@
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*spec.ts"],
   "references": [
-    { "path": "../../libs/common-types" }
+    { "path": "../../libs/common-types" },
+    { "path": "../../libs/pubsub-sdk" }
   ]
 }

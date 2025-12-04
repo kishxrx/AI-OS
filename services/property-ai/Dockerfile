@@ -31,7 +31,7 @@ COPY package.json package-lock.json ./
 RUN npm install --omit=dev
 
 RUN mkdir -p node_modules/@app \
-    && cp -R dist/libs/common-types node_modules/@app/common-types
+    && cp -R dist/libs/* node_modules/@app/
 
 ENV PORT=8080
 
