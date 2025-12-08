@@ -1,39 +1,152 @@
-import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@18.3.1?target=es2022';
+import React, { useCallback, useEffect, useMemo, useState } from 'https://esm.sh/react@18.3.1?target=es2022';
 import ReactDOM from 'https://esm.sh/react-dom@18.3.1/client?target=es2022';
+import htm from 'https://esm.sh/htm@3.1.0?bundle';
 import {
+  Activity,
   BellRing,
   Building2,
-  ShieldCheck,
-  Activity,
+  BrainCircuit,
   ClipboardList,
-  PenSquare,
-  ShieldOff,
-  CheckCircle2,
+  Home,
   LogOut,
   Menu,
+  ShieldCheck,
   Sparkles,
-  Home,
   UserCog,
-  Layers2,
-  BrainCircuit,
-  X,
-  AlertTriangle,
 } from 'https://esm.sh/lucide-react@0.259.0?bundle';
 
-const API_BASE = window.PROPERTY_API_BASE_URL || 'http://localhost:3000';
+const html = htm.bind(React.createElement);
+
+const PROPERTY_API_BASE_URL = window.PROPERTY_API_BASE_URL || 'http://localhost:3000/api';
+const MASTER_AI_BASE_URL = window.MASTER_AI_BASE_URL || 'http://localhost:4000/api';
+
+const initialProperties = [
+  {
+    id: 'prop-sunrise',
+    name: 'Sunrise Residency',
+    type: 'Apartment',
+    status: 'ACTIVE',
+    address: {
+      addressLine1: 'MG Road',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      country: 'India',
+      pincode: '560001',
+    },
+    statistics: { unitCount: 18, floorCount: 4 },
+    units: [
+      { id: 'SUN-APT-BED-001', type: 'Bed', status: 'Occupied' },
+      { id: 'SUN-APT-BED-002', type: 'Bed', status: 'Occupied' },
+      { id: 'SUN-APT-FLR-001', type: 'Floor', status: 'Available' },
+    ],
+  },
+  {
+    id: 'prop-lakeview',
+    name: 'Lakeview Towers',
+    type: 'Apartment',
+    status: 'ACTIVE',
+    address: {
+      addressLine1: 'Lakeview Road',
+      city: 'Hyderabad',
+      state: 'Telangana',
+      country: 'India',
+      pincode: '500048',
+    },
+    statistics: { unitCount: 20, floorCount: 5 },
+    units: [
+      { id: 'LAK-APT-FLR-001', type: 'Floor', status: 'Occupied' },
+      { id: 'LAK-APT-FLR-002', type: 'Floor', status: 'Occupied' },
+      { id: 'LAK-APT-BED-011', type: 'Bed', status: 'Occupied' },
+    ],
+  },
+  {
+    id: 'prop-cedar',
+    name: 'Cedar Co-Living',
+    type: 'PG',
+    status: 'ACTIVE',
+    address: {
+      addressLine1: 'Jalahalli',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      country: 'India',
+      pincode: '560013',
+    },
+    statistics: { unitCount: 12, floorCount: 3 },
+    units: [
+      { id: 'CED-PG-BED-001', type: 'Bed', status: 'Available' },
+      { id: 'CED-PG-BED-002', type: 'Bed', status: 'Occupied' },
+      { id: 'CED-PG-ROOM-001', type: 'Room', status: 'Occupied' },
+    ],
+  },
+];
+
+const serviceActions = {
+  'master-ai': [
+    {
+      label: 'Master AI Console',
+      value: 'console',
+      icon: BrainCircuit,
+      description: 'Inspect policy status, Pub/Sub health, and reasoning history.',
+    },
+    {
+      label: 'Master AI Agent',
+      value: 'agent',
+      icon: Sparkles,
+      description: 'Fire a reasoning prompt or inspect the latest snapshot.',
+    },
+  ],
+  'property-ai': [
+    {
+      label: 'Create Property',
+      value: 'create',
+      icon: Building2,
+      description: 'Onboard a new building with governance metadata.',
+    },
+    {
+      label: 'Manage Properties',
+      value: 'manage',
+      icon: ClipboardList,
+      description: 'See the portfolio, edit metadata, inspect units.',
+    },
+    {
+      label: 'Property AI Agent',
+      value: 'agent',
+      icon: Sparkles,
+      description: 'Ask Property AI to reason about maintenance or units.',
+    },
+  ],
+};
 
 const statusPalette = {
   healthy: 'bg-emerald-100 text-emerald-700',
   warning: 'bg-amber-100 text-amber-700',
   degraded: 'bg-rose-100 text-rose-700',
+  ACTIVE: 'bg-emerald-100 text-emerald-700',
+  LOGICALLY_DELETED: 'bg-amber-100 text-amber-700',
+  INACTIVE: 'bg-rose-100 text-rose-700',
 };
 
-async function fetchJson(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
+const initialForm = {
+  name: '',
+  type: 'Apartment',
+  address: { pincode: '', city: '', addressLine1: '', addressLine2: '', state: 'Karnataka', country: 'India' },
+  status: 'ACTIVE',
+};
+
+const unitTypeMap = {
+  Flats: 'FLAT',
+  Beds: 'BED',
+  Rooms: 'ROOM',
+  Floors: 'FLOOR',
+};
+
+const fetchJson = async (input, init = {}) => {
+  const response = await fetch(input, {
     headers: {
       'Content-Type': 'application/json',
+      ...init.headers,
     },
-    ...options,
+    ...init,
   });
   if (!response.ok) {
     const body = await response.text();
@@ -42,629 +155,722 @@ async function fetchJson(path, options = {}) {
   if (response.status === 204) {
     return null;
   }
-  return response.json();
-}
-
-const Sidebar = () => {
-  const navItems = [
-    { label: 'Ministries', icon: Layers2 },
-    { label: 'Finance', icon: ClipboardList },
-    { label: 'Property & Tenant', icon: Home },
-    { label: 'Welfare', icon: ShieldCheck },
-    { label: 'Technology', icon: BrainCircuit },
-    { label: 'Growth & Commerce', icon: PenSquare },
-    { label: 'Judiciary / Policies', icon: ShieldOff },
-    { label: 'AI Agents / Cabinet Secretary', icon: Sparkles },
-  ];
-
-  return (
-    <aside className="w-72 border-r border-slate-200 bg-white px-6 py-6">
-      <div className="mb-10 flex items-center justify-between">
-        <div>
-          <p className="text-lg font-semibold text-slate-900">Property Management</p>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">CEO View</p>
-        </div>
-        <button className="rounded-xl bg-slate-100 p-2 text-slate-600 hover:bg-slate-200">
-          <Menu size={18} />
-        </button>
-      </div>
-      <nav className="space-y-3">
-        {navItems.map((item) => (
-          <button
-            key={item.label}
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-          >
-            <item.icon size={18} />
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="mt-10 space-y-3 border-t border-slate-200 pt-6">
-        <button className="flex items-center gap-3 text-sm font-semibold text-slate-600">
-          <UserCog size={16} /> Settings
-        </button>
-        <button className="flex items-center gap-3 text-sm font-semibold text-slate-600">
-          <LogOut size={16} /> Logout
-        </button>
-      </div>
-    </aside>
-  );
-};
-
-const DashboardHeader = () => (
-  <div className="flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Dashboard</p>
-      <h1 className="text-2xl font-semibold text-slate-900">CEO - Property & Cabinet Operations</h1>
-    </div>
-    <div className="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm max-w-xl">
-      <input
-        type="search"
-        placeholder="Search ministry, agent..."
-        className="flex-1 border-0 bg-transparent text-sm focus:outline-none"
-      />
-      <BellRing size={20} className="text-slate-500" />
-    </div>
-  </div>
-);
-
-const ServiceHealth = () => {
-  const services = [
-    {
-      name: 'Property AI',
-      status: 'healthy',
-      detail: 'Serves property, unit, and lifecycle operations',
-      icon: Building2,
-    },
-    {
-      name: 'Master AI',
-      status: 'healthy',
-      detail: 'Oversees governance, policies, and MCP calls',
-      icon: BrainCircuit,
-    },
-  ];
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {services.map((service) => (
-        <div key={service.name} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-slate-50 p-2 text-slate-600">
-              <service.icon size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">{service.name}</p>
-              <p className="text-xs text-slate-500">{service.detail}</p>
-            </div>
-          </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusPalette[service.status]}`}>
-            {service.status === 'healthy' ? 'Ready' : 'Attention'}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const KpiCard = ({ label, value, delta, icon: Icon }) => (
-  <div className="flex items-start justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-    <div>
-      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
-      {delta && <p className="text-sm text-emerald-500">{delta}</p>}
-    </div>
-    <div className="rounded-2xl bg-slate-50 p-3 text-slate-600">
-      <Icon size={24} />
-    </div>
-  </div>
-);
-
-const PropertyCard = ({ property, isSelected, onSelect, units }) => {
-  const occupancyCount = units?.length || 0;
-  const capacity = property?.statistics?.unitCount || 20;
-  const isFull = occupancyCount >= capacity;
-
-  return (
-    <div
-      onClick={() => onSelect(property)}
-      className={`flex cursor-pointer flex-col justify-between gap-3 rounded-2xl border px-4 py-4 shadow-sm transition hover:border-slate-400 ${
-        isSelected ? 'border-slate-900 bg-slate-900/5' : 'border-slate-200 bg-white'
-      }`}
-    >
-      <div className="h-32 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-700 to-slate-900/60 text-white shadow-inner">
-        <div className="flex h-full flex-col justify-end p-4">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em]">Property</p>
-          <p className="text-lg font-bold">{property.name}</p>
-        </div>
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-slate-900">{property.address?.addressLine1}</p>
-        <p className="text-xs text-slate-500">{`${property.address?.city}, ${property.address?.country}`}</p>
-      </div>
-      <div className="flex items-center justify-between text-sm">
-        <span className={`rounded-full px-3 py-1 font-semibold ${isFull ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-          {isFull ? 'FULL' : `${occupancyCount}/${capacity}`}
-        </span>
-        <span className="text-xs text-slate-500">{isFull ? 'Fully occupied' : 'Accepting tenants'}</span>
-      </div>
-    </div>
-  );
-};
-
-const DuplicateCheckPanel = ({ onRunCheck, lastResult }) => {
-  const [query, setQuery] = useState('');
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="font-semibold text-slate-900">Duplicate Name Check</p>
-        <AlertTriangle size={16} className="text-slate-500" />
-      </div>
-      <p className="mt-2 text-xs text-slate-500">
-        Ensure the property name is unique before onboarding. This runs the same check as Property AI.
-      </p>
-      <div className="mt-4 flex flex-col gap-3">
-        <input
-          type="text"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Type property name"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <button
-          onClick={() => onRunCheck(query)}
-          disabled={!query}
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          Run Duplicate Check
-        </button>
-        {lastResult && (
-          <p className={`text-sm ${lastResult.cleared ? 'text-emerald-600' : 'text-rose-600'}`}>{lastResult.details}</p>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const PropertyDetails = ({
-  property,
-  units,
-  onAddUnit,
-  onLogicalDelete,
-  onHardDelete,
-}) => {
-  const [tab, setTab] = useState('units');
-  const occupancyCount = units?.length || 0;
-  const capacity = property?.statistics?.unitCount || 20;
-  const isFull = occupancyCount >= capacity;
-
-  return (
-    <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">{`Property ${property.name}`}</h2>
-          <p className="text-xs text-slate-500">Status: {property.status}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onLogicalDelete}
-            className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800"
-          >
-            Logical Delete
-          </button>
-          <button
-            onClick={onHardDelete}
-            className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-800"
-          >
-            Hard Delete
-          </button>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <div className="rounded-2xl border border-slate-200 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-500">
-          {tab.toUpperCase()}
-        </div>
-        {['overview', 'units'].map((option) => (
-          <button
-            key={option}
-            onClick={() => setTab(option)}
-            className={`rounded-2xl px-3 py-1 text-xs font-semibold ${tab === option ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        {tab === 'overview' ? (
-          <div className="space-y-2 text-sm text-slate-600">
-            <p>{property.address?.addressLine1}</p>
-            <p>{`${property.address?.city}, ${property.address?.country}`}</p>
-            <p>{`Occupancy: ${occupancyCount}/${capacity}`}</p>
-            <p className="flex items-center gap-2">
-              <CheckCircle2 className="text-emerald-500" /> Verified owner: {property.ownerId}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-900">Units ({units.length})</p>
-              <button
-                onClick={onAddUnit}
-                className="group flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
-              >
-                Add Units
-                <ArrowCaret />
-              </button>
-            </div>
-            {!units.length ? (
-              <p className="text-sm text-slate-500">No units added yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {units.map((unit) => (
-                  <div
-                    key={unit.id}
-                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm"
-                  >
-                    <div>
-                      <p className="font-semibold text-slate-900">{unit.unitIdentifier}</p>
-                      <p className="text-xs text-slate-500">{unit.unitType}</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="rounded-full bg-slate-100 px-2 py-1">{unit.status}</span>
-                      <button className="text-slate-500 hover:text-slate-900">Edit</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className={`rounded-2xl border ${isFull ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-white'} px-3 py-3 text-xs font-semibold`}>
-              {isFull ? 'Property at capacity' : 'Capacity available'}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const ArrowCaret = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 15.5 7.5 11h9z" />
-  </svg>
-);
-
-const AddUnitsInput = ({ onCreate, onCancel }) => {
-  const [type, setType] = useState('FLAT');
-  const [identifier, setIdentifier] = useState('');
-  const [quantity, setQuantity] = useState(1);
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-900">Add unit</p>
-        <button onClick={onCancel} className="text-xs text-slate-500">
-          Cancel
-        </button>
-      </div>
-      <div className="mt-3 space-y-3 text-sm">
-        <div>
-          <label className="text-xs font-semibold text-slate-500">Type</label>
-          <select
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            value={type}
-            onChange={(event) => setType(event.target.value)}
-          >
-            <option value="FLAT">Flat</option>
-            <option value="ROOM">Room</option>
-            <option value="BED">Bed</option>
-            <option value="FLOOR">Floor</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-slate-500">Identifier</label>
-          <input
-            type="text"
-            value={identifier}
-            onChange={(event) => setIdentifier(event.target.value)}
-            placeholder="Prop-ABC-BED-001"
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-slate-500">Quantity</label>
-          <input
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(event) => setQuantity(Number(event.target.value))}
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onCreate({ type, identifier, quantity })}
-            className="flex-1 rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
-          >
-            Create unit
-          </button>
-          <button onClick={onCancel} className="flex-1 rounded-2xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-900">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const DeleteModal = ({ open, title, description, children, onConfirm, onClose, disableConfirm }) => {
-  if (!open) {
+  const payload = await response.text();
+  if (!payload) {
     return null;
   }
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60">
-      <div className="w-11/12 max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">{title}</p>
-            <h3 className="text-lg font-semibold text-slate-900">{description}</h3>
-          </div>
-          <button onClick={onClose}>
-            <X size={20} className="text-slate-500" />
-          </button>
-        </div>
-        <div className="mt-4 space-y-3 text-sm text-slate-600">{children}</div>
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-900">
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={disableConfirm}
-            className="rounded-2xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return JSON.parse(payload);
 };
 
+const ServiceActionButton = ({ action, isActive, onClick }) => html`
+  <button
+    onClick=${() => onClick(action.value)}
+    class=${`flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
+      isActive ? 'border-slate-900 bg-slate-900/10 text-slate-900' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+    }`}
+  >
+    <${action.icon} size="18" class="text-slate-500" />
+    <div class="flex-1">
+      <p class="font-semibold">${action.label}</p>
+      <p class="text-xs text-slate-500">${action.description}</p>
+    </div>
+  </button>
+`;
+
+const DeleteModal = ({ open, title, description, onClose, onConfirm, disableConfirm, children }) =>
+  open
+    ? html`
+        <div class="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/60">
+          <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.4em] text-slate-500">${description}</p>
+                <h3 class="text-xl font-semibold text-slate-900">${title}</h3>
+              </div>
+              <button onClick=${onClose} class="text-slate-400">✕</button>
+            </div>
+            <div class="mt-4 space-y-3 text-sm text-slate-600">${children}</div>
+            <div class="mt-6 flex justify-end gap-2">
+              <button onClick=${onClose} class="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700">
+                Cancel
+              </button>
+              <button
+                onClick=${onConfirm}
+                class="rounded-2xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                disabled=${disableConfirm}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      `
+    : null;
+
 const App = () => {
-  const [properties, setProperties] = useState([]);
-  const [selectedProperty, setSelectedProperty] = useState(null);
-  const [units, setUnits] = useState([]);
+  const [properties, setProperties] = useState(initialProperties);
+  const [selectedProperty, setSelectedProperty] = useState(initialProperties[0] ?? null);
+  const [selectedUnits, setSelectedUnits] = useState(initialProperties[0]?.units ?? []);
+  const [formState, setFormState] = useState(initialForm);
   const [statusMessage, setStatusMessage] = useState('');
   const [working, setWorking] = useState(false);
-  const [duplicateResult, setDuplicateResult] = useState(null);
-  const [showUnitsInput, setShowUnitsInput] = useState(false);
-  const [deleteFlow, setDeleteFlow] = useState({ logical: false, hard: false });
-  const [hardDeletePhrase, setHardDeletePhrase] = useState('');
+  const [activeService, setActiveService] = useState('property-ai');
+  const [activeAction, setActiveAction] = useState(serviceActions['property-ai'][0].value);
+  const [detailTab, setDetailTab] = useState('units');
+  const [deleteModal, setDeleteModal] = useState({ logical: false, hard: false });
+  const [hardPhrase, setHardPhrase] = useState('');
+  const [unitMenuOpen, setUnitMenuOpen] = useState(false);
+  const [agentPrompt, setAgentPrompt] = useState('Summarize the latest property compliance tickets.');
+  const [masterAgentPrompt, setMasterAgentPrompt] = useState('What is the next MCP task for Property AI?');
+  const [propertyAgentResponse, setPropertyAgentResponse] = useState(null);
+  const [masterAgentResponse, setMasterAgentResponse] = useState(null);
+  const [masterHistory, setMasterHistory] = useState([]);
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [loadingMasterHistory, setLoadingMasterHistory] = useState(false);
+  const [lastCreatedProperty, setLastCreatedProperty] = useState(null);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
-  const [formState, setFormState] = useState({
-    name: '',
-    type: 'Apartment',
-    imageUrls: '',
-    address: { pincode: '', city: '', addressLine1: '', addressLine2: '', country: 'India', state: 'Karnataka' },
-    status: 'ACTIVE',
-  });
+  const propertyMetrics = useMemo(() => {
+    const totalRental = properties.reduce((sum, property) => {
+      const occupied = property.statistics?.unitCount ?? 0;
+      return sum + occupied * 1200;
+    }, 0);
+    const collected = Math.round(totalRental * 0.92);
+    const overdue = totalRental - collected;
+    return [
+      { label: 'Total Rental Income', value: `₹ ${totalRental.toLocaleString('en-IN')}`, delta: '₹ 12.3L MTD' },
+      { label: 'Rent Collected', value: `₹ ${collected.toLocaleString('en-IN')}`, delta: '98% collected' },
+      { label: 'Overdue Payments', value: `₹ ${overdue.toLocaleString('en-IN')}`, delta: '2 properties flagged' },
+    ];
+  }, [properties]);
 
-  const loadProperties = async () => {
+  const fetchProperties = useCallback(async () => {
+    setLoadingProperties(true);
     try {
-      const data = await fetchJson('/properties');
-      setProperties(data);
+      const data = await fetchJson(`${PROPERTY_API_BASE_URL}/properties`);
+      if (Array.isArray(data)) {
+        setProperties(data);
+        setSelectedProperty((current) => {
+          if (data.length === 0) {
+            return null;
+          }
+          const existing = data.find((item) => item.id === current?.id);
+          return existing ?? data[0];
+        });
+      }
+      setStatusMessage('Properties synced from live service.');
     } catch (error) {
       setStatusMessage(`Unable to load properties: ${error.message}`);
+      setProperties(initialProperties);
+      setSelectedProperty((prev) => prev ?? initialProperties[0] ?? null);
+    } finally {
+      setLoadingProperties(false);
     }
-  };
+  }, []);
 
-  const loadUnits = async (propertyId) => {
+  const fetchUnitsForProperty = useCallback(async (propertyId) => {
     if (!propertyId) {
-      setUnits([]);
+      setSelectedUnits([]);
       return;
     }
+    setLoadingUnits(true);
     try {
-      const data = await fetchJson(`/properties/${propertyId}/units`);
-      setUnits(data ?? []);
+      const data = await fetchJson(`${PROPERTY_API_BASE_URL}/properties/${propertyId}/units`);
+      setSelectedUnits(Array.isArray(data) ? data : []);
+      setStatusMessage('Units refreshed.');
     } catch (error) {
       setStatusMessage(`Unable to load units: ${error.message}`);
+      setSelectedUnits([]);
+    } finally {
+      setLoadingUnits(false);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    loadProperties();
+  const fetchMasterHistory = useCallback(async () => {
+    setLoadingMasterHistory(true);
+    try {
+      const history = await fetchJson(`${MASTER_AI_BASE_URL}/master-ai/history`);
+      setMasterHistory(Array.isArray(history) ? history : []);
+    } catch (error) {
+      setMasterHistory([]);
+      setStatusMessage(`Master history unavailable: ${error.message}`);
+    } finally {
+      setLoadingMasterHistory(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (!selectedProperty && properties.length) {
-      setSelectedProperty(properties[0]);
-      return;
-    }
-    if (selectedProperty) {
-      loadUnits(selectedProperty.id);
-    }
-  }, [properties, selectedProperty]);
+    fetchProperties();
+  }, [fetchProperties]);
 
-  const handleCreateProperty = async (event) => {
+  useEffect(() => {
+    if (selectedProperty?.id) {
+      fetchUnitsForProperty(selectedProperty.id);
+    } else {
+      setSelectedUnits([]);
+    }
+    setUnitMenuOpen(false);
+  }, [selectedProperty?.id, fetchUnitsForProperty]);
+
+  useEffect(() => {
+    if (activeService === 'master-ai') {
+      fetchMasterHistory();
+    }
+  }, [activeService, fetchMasterHistory]);
+
+  const handlePropertySubmit = async (event) => {
     event.preventDefault();
-    if (!formState.name || !formState.address.addressLine1) {
-      setStatusMessage('Name and address are required.');
+    if (working) {
       return;
     }
     setWorking(true);
+    setStatusMessage('Saving property...');
     try {
       const payload = {
         name: formState.name,
         type: formState.type,
-        ownerId: 'ceo-admin',
+        address: formState.address,
         status: formState.status,
-        imageUrls: formState.imageUrls ? formState.imageUrls.split(',').map((url) => url.trim()) : [],
-        address: { ...formState.address },
-        statistics: { unitCount: 20, floorCount: 5 },
+        ownerId: 'ceo-ui-dashboard',
       };
-      const created = await fetchJson('/properties', {
+      const created = await fetchJson(`${PROPERTY_API_BASE_URL}/properties`, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      setStatusMessage(`Property "${created.name}" created.`);
-      await loadProperties();
-      setSelectedProperty(created);
+      setLastCreatedProperty(created);
+      setSuccessModalOpen(true);
+      setStatusMessage(`Property "${created?.name ?? 'new property'}" created.`);
+      await fetchProperties();
+      setActiveService('property-ai');
+      setActiveAction('manage');
     } catch (error) {
-      setStatusMessage(`Property creation failed: ${error.message}`);
+      setStatusMessage(`Create failed: ${error.message}`);
     } finally {
       setWorking(false);
+      setFormState(initialForm);
     }
   };
 
-  const handleDuplicateCheck = async (name) => {
-    if (!name) {
-      setDuplicateResult(null);
-      return;
-    }
-    try {
-      const result = await fetchJson('/properties/duplicate-check', {
-        method: 'POST',
-        body: JSON.stringify({ payload: { property: { name } } }),
-      });
-      setDuplicateResult(result);
-    } catch (error) {
-      setDuplicateResult({ cleared: false, details: error.message });
-    }
+  const selectService = (service) => {
+    setActiveService(service);
+    const nextAction = serviceActions[service]?.[0]?.value ?? 'console';
+    setActiveAction(nextAction);
   };
 
-  const handleAddUnit = () => {
-    setShowUnitsInput(true);
-  };
-
-  const handleCreateUnit = async ({ type, identifier, quantity }) => {
+  const handleUnitAdd = async (typeLabel) => {
     if (!selectedProperty) {
-      setStatusMessage('Select a property before creating units.');
       return;
     }
-    const payload = {
-      propertyId: selectedProperty.id,
-      unitType: type,
-      unitIdentifier: identifier || `${selectedProperty.name}-${type}-${Math.floor(Math.random() * 1000)}`,
-      status: 'AVAILABLE',
-      quantity,
-    };
-    setWorking(true);
+    const unitType = unitTypeMap[typeLabel];
+    if (!unitType) {
+      return;
+    }
+    setUnitMenuOpen(false);
+    setStatusMessage(`Adding ${typeLabel}...`);
     try {
-      await fetchJson(`/properties/${selectedProperty.id}/units`, {
+      const generatedId = `${selectedProperty.name.slice(0, 3).toUpperCase()}-${unitType.slice(0, 3)}-${Date.now().toString().slice(-4)}`;
+      await fetchJson(`${PROPERTY_API_BASE_URL}/properties/${selectedProperty.id}/units`, {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          propertyId: selectedProperty.id,
+          unitType,
+          unitIdentifier: generatedId,
+        }),
       });
-      setStatusMessage('Unit added.');
-      setShowUnitsInput(false);
-      void loadUnits(selectedProperty.id);
+      setStatusMessage(`${typeLabel} ${generatedId} created.`);
+      await fetchUnitsForProperty(selectedProperty.id);
     } catch (error) {
       setStatusMessage(`Unit creation failed: ${error.message}`);
-    } finally {
-      setWorking(false);
     }
   };
 
-  const handleLogicalDelete = () => {
+  const handleLogicalDelete = async () => {
     if (!selectedProperty) {
       return;
     }
-    setDeleteFlow((prev) => ({ ...prev, logical: true }));
-  };
-
-  const confirmLogicalDelete = async () => {
-    if (!selectedProperty) {
-      return;
-    }
-    setDeleteFlow((prev) => ({ ...prev, logical: false }));
-    setWorking(true);
+    setStatusMessage('Running logical delete checks...');
     try {
-      await fetchJson(`/properties/${selectedProperty.id}/logical-delete`, {
+      await fetchJson(`${PROPERTY_API_BASE_URL}/properties/${selectedProperty.id}/logical-delete`, {
         method: 'PATCH',
       });
-      setStatusMessage('Property marked as logically deleted.');
-      await loadProperties();
-      setSelectedProperty(null);
+      setStatusMessage(`Property "${selectedProperty.name}" marked as logically deleted.`);
+      await fetchProperties();
     } catch (error) {
       setStatusMessage(`Logical delete failed: ${error.message}`);
     } finally {
-      setWorking(false);
+      setDeleteModal((prev) => ({ ...prev, logical: false }));
     }
   };
 
-  const handleHardDelete = () => {
-    setDeleteFlow((prev) => ({ ...prev, hard: true }));
-  };
-
-  const expectedHardDeletePhrase = useMemo(
-    () => (selectedProperty ? `DELETE ${selectedProperty.name}` : ''),
-    [selectedProperty],
-  );
-
-  const confirmHardDelete = async () => {
+  const handleHardDelete = async () => {
     if (!selectedProperty) {
       return;
     }
-    setDeleteFlow((prev) => ({ ...prev, hard: false }));
-    setWorking(true);
+    setStatusMessage('Hard deleting property...');
     try {
-      await fetchJson(`/properties/${selectedProperty.id}`, { method: 'DELETE' });
-      setStatusMessage('Property permanently deleted.');
-      await loadProperties();
+      await fetchJson(`${PROPERTY_API_BASE_URL}/properties/${selectedProperty.id}`, {
+        method: 'DELETE',
+      });
+      setStatusMessage(`Property "${selectedProperty.name}" permanently removed.`);
+      await fetchProperties();
       setSelectedProperty(null);
-      setHardDeletePhrase('');
     } catch (error) {
       setStatusMessage(`Hard delete failed: ${error.message}`);
-      setHardDeletePhrase('');
     } finally {
-      setWorking(false);
+      setHardPhrase('');
+      setDeleteModal((prev) => ({ ...prev, hard: false }));
     }
   };
 
-  const propertyMetrics = useMemo(() => {
-    const rentalIncome = properties.reduce((sum, property) => sum + (property.statistics?.unitCount ?? 0) * 1500, 0);
-    return [
-      { label: 'Total Rental Income', value: `₹ ${rentalIncome.toLocaleString('en-IN')}`, icon: Activity, delta: '₹ 1.2L MTD' },
-      { label: 'Rent Collected', value: `₹ ${(rentalIncome * 0.84).toLocaleString('en-IN')}`, icon: ShieldCheck, delta: '98% on-time' },
-      { label: 'Overdue Payments', value: `₹ ${(rentalIncome * 0.12).toLocaleString('en-IN')}`, icon: AlertTriangle, delta: '12 overdue cases' },
-    ];
-  }, [properties]);
+  const sendPropertyAgentPrompt = async () => {
+    if (!agentPrompt.trim()) {
+      return;
+    }
+    setStatusMessage('Sending prompt to Property AI agent...');
+    try {
+      const response = await fetchJson(`${PROPERTY_API_BASE_URL}/agent/maintenance-request`, {
+        method: 'POST',
+        body: JSON.stringify({ text: agentPrompt }),
+      });
+      setPropertyAgentResponse(response);
+      setStatusMessage('Property AI agent provided an analysis.');
+    } catch (error) {
+      setStatusMessage(`Property AI agent failed: ${error.message}`);
+    }
+  };
 
-  return (
-    <div className="min-h-screen">
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 space-y-6 p-6">
-          <DashboardHeader />
-          <ServiceHealth />
-          <div className="grid gap-4 md:grid-cols-3">{propertyMetrics.map((metric) => <KpiCard key={metric.label} {...metric} />)}</div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-900">Recent Activity</p>
-              <ul className="mt-3 space-y-3 text-sm text-slate-600">
-                <li className="flex items-start gap-2">
-                  <Activity size={14} className="text-slate-500" />
-                  New tenant added to Apt 4A (5 min ago)
+  const sendMasterAiPrompt = async () => {
+    if (!masterAgentPrompt.trim()) {
+      return;
+    }
+    setStatusMessage('Sending reasoning request to Master AI...');
+    try {
+      const payload = {
+        eventId: `ui-${Date.now()}`,
+        action: 'create_property',
+        propertyId: selectedProperty?.id ?? 'ui-demo',
+        user: {
+          id: 'ceo-ui',
+          role: 'ceo',
+          permissions: ['property:create'],
+        },
+        payload: { prompt: masterAgentPrompt },
+      };
+      const response = await fetchJson(`${MASTER_AI_BASE_URL}/master-ai/events`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      setMasterAgentResponse(response);
+      setStatusMessage('Master AI reasoning snapshot received.');
+      await fetchMasterHistory();
+    } catch (error) {
+      setStatusMessage(`Master AI agent failed: ${error.message}`);
+    }
+  };
+
+  const renderPropertyCard = (property) => {
+    const occupancy = property.statistics?.unitCount ?? property.units?.length ?? 0;
+    const capacity = 20;
+    const isSelected = selectedProperty?.id === property.id;
+    return html`
+      <div
+        key=${property.id}
+        class=${`rounded-3xl border p-4 shadow-sm transition ${
+          isSelected ? 'border-slate-900 bg-slate-900/5' : 'border-slate-200 bg-white'
+        }`}
+      >
+        <div class="flex h-40 flex-col justify-end rounded-2xl bg-gradient-to-br from-slate-900 via-slate-700 to-slate-900/60 p-4 text-white">
+          <p class="text-[10px] uppercase tracking-[0.5em] text-slate-200">${property.type}</p>
+          <p class="text-lg font-semibold">${property.name}</p>
+        </div>
+        <div class="mt-3 space-y-2 text-sm text-slate-600">
+          <p>${property.address.addressLine1}</p>
+          <p>${property.address.city}, ${property.address.state}</p>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-xs font-semibold">
+          <span class=${statusPalette[property.status] ?? 'bg-slate-100 text-slate-600'}>
+            ${occupancy >= capacity ? 'FULL' : `${occupancy}/${capacity}`}
+          </span>
+          <span class="text-slate-500">${property.status === 'ACTIVE' ? 'Active' : 'Paused'}</span>
+        </div>
+        <div class="mt-3 flex items-center justify-between">
+          <button
+            onClick=${() => setSelectedProperty(property)}
+            class="rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-800"
+          >
+            Details
+          </button>
+          <button
+            onClick=${() => {
+              setSelectedProperty(property);
+              setDetailTab('units');
+            }}
+            class="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-semibold text-white"
+          >
+            Manage units
+          </button>
+        </div>
+      </div>
+    `;
+  };
+
+  const renderServiceActions = () => {
+    if (!activeService) {
+      return html`<p class="text-xs text-slate-400">Select a service to unlock consoles and agents.</p>`;
+    }
+    return html`
+      <div class="space-y-2">
+        ${serviceActions[activeService]?.map((action) =>
+          html`<${ServiceActionButton} key=${action.value} action=${action} isActive=${activeAction === action.value} onClick=${setActiveAction} />`,
+        )}
+      </div>
+    `;
+  };
+
+  const renderServicePanel = () => {
+    if (!activeService) {
+      return html`
+        <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
+          Choose Master AI or Property AI to see their consoles, agents, and controls.
+        </div>
+      `;
+    }
+
+    const isPropertyService = activeService === 'property-ai';
+
+    if (isPropertyService && activeAction === 'create') {
+      return html`
+        <form class="space-y-4 text-sm" onSubmit=${handlePropertySubmit}>
+          <div>
+            <label class="text-xs font-semibold uppercase text-slate-500">Property name</label>
+            <input
+              value=${formState.name}
+              onInput=${(event) => setFormState((prev) => ({ ...prev, name: event.currentTarget.value }))}
+              placeholder="ABC"
+              class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label class="text-xs font-semibold uppercase text-slate-500">Type</label>
+            <select
+              value=${formState.type}
+              onChange=${(event) => setFormState((prev) => ({ ...prev, type: event.currentTarget.value }))}
+              class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            >
+              <option value="Apartment">Apartment</option>
+              <option value="PG">PG</option>
+              <option value="House">House</option>
+              <option value="Commercial">Commercial</option>
+            </select>
+          </div>
+          <div class="grid gap-3 md:grid-cols-2">
+            <input
+              value=${formState.address.pincode}
+              onInput=${(event) => setFormState((prev) => ({
+                ...prev,
+                address: { ...prev.address, pincode: event.currentTarget.value },
+              }))}
+              placeholder="Pincode"
+              class="rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              required
+            />
+            <input
+              value=${formState.address.city}
+              onInput=${(event) => setFormState((prev) => ({
+                ...prev,
+                address: { ...prev.address, city: event.currentTarget.value },
+              }))}
+              placeholder="City"
+              class="rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              required
+            />
+          </div>
+          <input
+            value=${formState.address.addressLine1}
+            onInput=${(event) => setFormState((prev) => ({
+              ...prev,
+              address: { ...prev.address, addressLine1: event.currentTarget.value },
+            }))}
+            placeholder="Address Line 1"
+            class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            required
+          />
+          <input
+            value=${formState.address.addressLine2}
+            onInput=${(event) => setFormState((prev) => ({
+              ...prev,
+              address: { ...prev.address, addressLine2: event.currentTarget.value },
+            }))}
+            placeholder="Address Line 2"
+            class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+          <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
+            <p class="font-semibold text-slate-900">Add pictures</p>
+            <p class="text-[10px] uppercase tracking-[0.4em] text-slate-400">Drop images</p>
+          </div>
+          <div>
+            <label class="text-xs font-semibold uppercase text-slate-500">Status</label>
+            <select
+              value=${formState.status}
+              onChange=${(event) => setFormState((prev) => ({ ...prev, status: event.currentTarget.value }))}
+              class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="LOGICALLY_DELETED">L.Delete</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              onClick=${() => setFormState(initialForm)}
+              class="flex-1 rounded-2xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-900"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled=${working}
+              class="flex-1 rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      `;
+    }
+
+    if (isPropertyService && activeAction === 'manage') {
+      return html`
+        <div class="space-y-3 text-sm">
+          <p class="text-xs uppercase tracking-[0.4em] text-slate-500">Portfolio snapshot</p>
+          ${properties.map(
+            (property) => html`
+              <div class="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700">
+                <div>
+                  <p class="font-semibold">${property.name}</p>
+                  <p class="text-xs text-slate-500">${property.type} • ${property.address.city}</p>
+                </div>
+                <button
+                  onClick=${() => {
+                    setSelectedProperty(property);
+                    setDetailTab('overview');
+                  }}
+                  class="rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
+                >
+                  Edit
+                </button>
+              </div>
+            `,
+          )}
+        </div>
+      `;
+    }
+
+    if (isPropertyService && activeAction === 'agent') {
+      return html`
+        <div class="space-y-3 text-sm">
+          <p class="text-xs uppercase tracking-[0.4em] text-slate-500">Property AI Agent</p>
+          <textarea
+            value=${agentPrompt}
+            onInput=${(event) => setAgentPrompt(event.currentTarget.value)}
+            rows="4"
+            class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          ></textarea>
+          <div class="flex justify-between text-xs text-slate-500">
+            <span>Model: GPT-4.1 Nano</span>
+            <span>Session warmed</span>
+          </div>
+          <button class="w-full rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white" onClick=${sendPropertyAgentPrompt}>
+            Send prompt
+          </button>
+          ${propertyAgentResponse
+            ? html`
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  <p class="font-semibold text-slate-900">Detected category: ${propertyAgentResponse.category ?? '—'}</p>
+                  <p>Severity: ${propertyAgentResponse.severity ?? '—'}</p>
+                  <p>Main entity: ${propertyAgentResponse.entity ?? '—'}</p>
+                </div>
+              `
+            : null}
+        </div>
+      `;
+    }
+
+    if (activeService === 'master-ai' && activeAction === 'console') {
+      return html`
+        <div class="space-y-3 text-sm">
+          <p class="text-xs uppercase tracking-[0.4em] text-slate-500">Master AI Console</p>
+          <p class="text-slate-600">Policy compliance is monitored live. Latest MCP task executed against Property AI.</p>
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+            <p>Pub/Sub topic: property-events</p>
+            <p>LPM agent: ${masterHistory.length ? 'Responding' : 'Idle'}</p>
+          </div>
+          <div class="space-y-2 text-xs text-slate-500">
+            ${loadingMasterHistory
+              ? html`<p>Loading reasoning history...</p>`
+              : masterHistory.length
+                ? masterHistory.slice(0, 3).map(
+                    (snapshot) => html`
+                      <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                        <p class="font-semibold text-slate-900">${snapshot.action} → ${snapshot.decision}</p>
+                        <p>${snapshot.details ?? 'No details provided.'}</p>
+                        <p class="text-[10px] uppercase tracking-[0.4em] text-slate-400">${snapshot.timestamp ?? 'unknown'}</p>
+                      </div>
+                    `,
+                  )
+                : html`<p>No reasoning snapshots captured yet.</p>`}
+          </div>
+        </div>
+      `;
+    }
+
+    if (activeService === 'master-ai' && activeAction === 'agent') {
+      return html`
+        <div class="space-y-3 text-sm">
+          <p class="text-xs uppercase tracking-[0.4em] text-slate-500">Master AI Agent</p>
+          <textarea
+            value=${masterAgentPrompt}
+            onInput=${(event) => setMasterAgentPrompt(event.currentTarget.value)}
+            rows="4"
+            class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          ></textarea>
+          <div class="flex justify-between text-xs text-slate-500">
+            <span>Model: GPT-4.1 Nano</span>
+            <span>Plan builder engaged</span>
+          </div>
+          <button class="w-full rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white" onClick=${sendMasterAiPrompt}>
+            Send prompt
+          </button>
+          ${masterAgentResponse
+            ? html`
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  <p class="font-semibold text-slate-900">Decision: ${masterAgentResponse.decision ?? 'pending'}</p>
+                  <p>${masterAgentResponse.details ?? 'Awaiting reasoning details.'}</p>
+                </div>
+              `
+            : null}
+        </div>
+      `;
+    }
+
+    return html`
+      <p class="text-sm text-slate-500">This view will show the selected service actions.</p>
+    `;
+  };
+
+  return html`
+    <div class="min-h-screen bg-slate-50">
+      <div class="flex">
+        <aside class="w-72 border-r border-slate-200 bg-white px-6 py-8">
+          <div class="mb-10">
+            <p class="text-lg font-semibold text-slate-900">Property Management</p>
+            <p class="text-xs uppercase tracking-[0.3em] text-slate-500">CEO / Admin View</p>
+          </div>
+          <div class="space-y-3">
+            <button
+              onClick=${() => selectService(null)}
+              class="flex w-full items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+            >
+              <${Home} size="18" class="text-slate-500" />
+              Dashboard overview
+            </button>
+            <button
+              onClick=${() => selectService('master-ai')}
+              class="flex w-full items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+            >
+              <${BrainCircuit} size="18" class="text-slate-500" />
+              Master AI
+            </button>
+            <button
+              onClick=${() => selectService('property-ai')}
+              class="flex w-full items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+            >
+              <${Building2} size="18" class="text-slate-500" />
+              Property AI
+            </button>
+          </div>
+          <div class="mt-10 space-y-3 text-xs text-slate-400">
+            <p>Deployed services</p>
+            <div class="flex items-center justify-between rounded-2xl border border-slate-200 px-3 py-2">
+              <span>Master AI</span>
+              <span class="text-[10px] text-emerald-500">Live</span>
+            </div>
+            <div class="flex items-center justify-between rounded-2xl border border-slate-200 px-3 py-2">
+              <span>Property AI</span>
+              <span class="text-[10px] text-emerald-500">Live</span>
+            </div>
+          </div>
+          <div class="mt-auto flex items-center gap-3 pt-10 text-sm">
+            <${ShieldCheck} size="18" class="text-slate-500" />
+            <p class="text-slate-500">Secure controls</p>
+          </div>
+          <div class="mt-6 flex items-center gap-3 text-sm text-slate-500">
+            <${UserCog} size="18" />
+            Settings
+          </div>
+          <div class="mt-3 flex items-center gap-3 text-sm text-slate-500">
+            <${LogOut} size="18" />
+            Logout
+          </div>
+        </aside>
+        <main class="flex-1 space-y-6 p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-sm uppercase tracking-[0.3em] text-slate-500">Dashboard</p>
+              <h1 class="text-2xl font-semibold text-slate-900">CEO Command Center</h1>
+            </div>
+            <div class="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm max-w-xl">
+              <input
+                type="search"
+                placeholder="Search ministry, agent..."
+                class="flex-1 border-0 bg-transparent text-sm focus:outline-none"
+              />
+              <${BellRing} size="20" class="text-slate-500" />
+            </div>
+          </div>
+          <div class="grid gap-4 md:grid-cols-3">
+            ${propertyMetrics.map(
+              (metric) => html`
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p class="text-xs uppercase tracking-[0.4em] text-slate-400">${metric.label}</p>
+                  <p class="mt-2 text-2xl font-semibold text-slate-900">${metric.value}</p>
+                  <p class="text-xs text-slate-500">${metric.delta}</p>
+                </div>
+              `,
+            )}
+          </div>
+          <div class="grid gap-4 lg:grid-cols-3">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-sm font-semibold text-slate-900">Recent Activity</p>
+              <ul class="mt-3 space-y-3 text-sm text-slate-600">
+                <li class="flex items-start gap-2">
+                  <${Activity} size="14" class="text-slate-500" />
+                  New tenant added at Sunrise Residency (5 min ago)
                 </li>
-                <li className="flex items-start gap-2">
-                  <Activity size={14} className="text-slate-500" />
+                <li class="flex items-start gap-2">
+                  <${Activity} size="14" class="text-slate-500" />
                   Rent collected for Bed 123 (15 min ago)
                 </li>
-                <li className="flex items-start gap-2">
-                  <Activity size={14} className="text-slate-500" />
-                  Cabinet Secretary AI noted compliance breach (22 min ago)
+                <li class="flex items-start gap-2">
+                  <${Activity} size="14" class="text-slate-500" />
+                  Cabinet Secretary AI flagged compliance breach (22 min ago)
                 </li>
               </ul>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-900">Alerts & Compliance</p>
-              <ul className="mt-3 space-y-3 text-sm text-slate-600">
-                <li className="rounded-2xl bg-rose-50 p-3 text-rose-600">Maintenance backlog (Property Sunset Lofts)</li>
-                <li className="rounded-2xl bg-amber-50 p-3 text-amber-700">Unauthorized data access attempt blocked</li>
-                <li className="rounded-2xl bg-emerald-50 p-3 text-emerald-700">Pending approvals: 3 dispute cases</li>
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-sm font-semibold text-slate-900">Alerts & Compliance</p>
+              <ul class="mt-3 space-y-3 text-sm text-slate-600">
+                <li class="rounded-2xl bg-rose-50 p-3 text-rose-600">Maintenance backlog (Sunrise Residency)</li>
+                <li class="rounded-2xl bg-amber-50 p-3 text-amber-700">Unauthorized data access attempt blocked</li>
+                <li class="rounded-2xl bg-emerald-50 p-3 text-emerald-700">Pending approvals: 3 dispute cases</li>
               </ul>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-900">Audit Summary</p>
-              <div className="mt-3 space-y-3 text-sm text-slate-600">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-sm font-semibold text-slate-900">Audit Summary</p>
+              <div class="mt-3 space-y-3 text-sm text-slate-600">
                 <p>Policy Compliance: 99.3%</p>
                 <p>Pending human reviews: 3 cases</p>
                 <p>Discrepancies found: 2 (awaiting investigation)</p>
@@ -672,192 +878,229 @@ const App = () => {
               </div>
             </div>
           </div>
-          <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">Properties</h3>
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Portfolio</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {properties.map((property) => (
-                  <PropertyCard
-                    key={property.id}
-                    property={property}
-                    units={property.id === selectedProperty?.id ? units : []}
-                    isSelected={selectedProperty?.id === property.id}
-                    onSelect={setSelectedProperty}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-slate-900">Add New Property</h3>
-                  <Sparkles size={20} className="text-slate-500" />
+          <section class="grid gap-6 lg:grid-cols-[2fr,1fr]">
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-900">Properties</h3>
+                  <p class="text-xs uppercase tracking-[0.4em] text-slate-400">Portfolio</p>
                 </div>
-                <form className="mt-4 space-y-3 text-sm" onSubmit={handleCreateProperty}>
-                  <div>
-                    <label className="text-xs font-semibold uppercase text-slate-500">Property name</label>
-                    <input
-                      value={formState.name}
-                      onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
-                      placeholder="ABC"
-                      className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold uppercase text-slate-500">Type</label>
-                    <select
-                      value={formState.type}
-                      onChange={(event) => setFormState((prev) => ({ ...prev, type: event.target.value }))}
-                      className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    >
-                      <option value="PG">PG</option>
-                      <option value="House">House</option>
-                      <option value="Apartment">Apartment</option>
-                      <option value="Commercial">Commercial</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <input
-                      value={formState.address.pincode}
-                      onChange={(event) =>
-                        setFormState((prev) => ({
-                          ...prev,
-                          address: { ...prev.address, pincode: event.target.value },
-                        }))
-                      }
-                      placeholder="Pincode"
-                      className="rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    />
-                    <input
-                      value={formState.address.city}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, address: { ...prev.address, city: event.target.value } }))
-                      }
-                      placeholder="City"
-                      className="rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    />
-                  </div>
-                  <input
-                    value={formState.address.addressLine1}
-                    onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, address: { ...prev.address, addressLine1: event.target.value } }))
-                    }
-                    placeholder="Address Line 1"
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                  />
-                  <input
-                    value={formState.address.addressLine2}
-                    onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, address: { ...prev.address, addressLine2: event.target.value } }))
-                    }
-                    placeholder="Address Line 2"
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                  />
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
-                    <p className="font-semibold text-slate-900">Add pictures</p>
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Drop images</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold uppercase text-slate-500">Status</label>
-                    <select
-                      value={formState.status}
-                      onChange={(event) => setFormState((prev) => ({ ...prev, status: event.target.value }))}
-                      className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    >
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Non-A</option>
-                      <option value="LOGICALLY_DELETED">L.Delete</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormState({
-                          name: '',
-                          type: 'Apartment',
-                          imageUrls: '',
-                          address: { pincode: '', city: '', addressLine1: '', addressLine2: '', country: 'India', state: 'Karnataka' },
-                          status: 'ACTIVE',
-                        })
-                      }
-                      className="flex-1 rounded-2xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-900"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={working}
-                      className="flex-1 rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </form>
+                <button
+                  onClick=${() => {
+                    setActiveService('property-ai');
+                    setActiveAction('create');
+                  }}
+                  class="rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Add Property
+                </button>
               </div>
-              <DuplicateCheckPanel onRunCheck={handleDuplicateCheck} lastResult={duplicateResult} />
+              <div class="grid gap-4 md:grid-cols-2">
+                ${properties.map((property) => renderPropertyCard(property))}
+              </div>
+              ${selectedProperty
+                ? html`
+                    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-xs uppercase tracking-[0.4em] text-slate-400">Property</p>
+                          <h3 class="text-xl font-semibold text-slate-900">${selectedProperty.name}</h3>
+                          <p class="text-xs text-slate-500">${selectedProperty.address.city} • ${selectedProperty.type}</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                          <button
+                            onClick=${() => setDetailTab('overview')}
+                            class=${`rounded-full px-3 py-1 ${detailTab === 'overview' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+                          >
+                            Overview
+                          </button>
+                          <button
+                            onClick=${() => setDetailTab('units')}
+                            class=${`rounded-full px-3 py-1 ${detailTab === 'units' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+                          >
+                            Units
+                          </button>
+                        </div>
+                      </div>
+                      ${detailTab === 'overview'
+                        ? html`
+                            <div class="mt-5 grid gap-4 md:grid-cols-2">
+                              <div>
+                                <p class="text-xs text-slate-500">Occupancy</p>
+                                <p class="text-lg font-semibold text-slate-900">${selectedProperty.statistics?.unitCount ?? selectedUnits.length}/20</p>
+                              </div>
+                              <div>
+                                <p class="text-xs text-slate-500">Status</p>
+                                <p class="text-sm font-semibold text-slate-900">${selectedProperty.status}</p>
+                              </div>
+                              <div>
+                                <p class="text-xs text-slate-500">Policy checks</p>
+                                <p class="text-sm text-emerald-600">Clear</p>
+                              </div>
+                              <div>
+                                <p class="text-xs text-slate-500">Audit backlog</p>
+                                <p class="text-sm text-amber-600">2 tickets</p>
+                              </div>
+                            </div>
+                          `
+                        : html`
+                            <div class="mt-5 space-y-3">
+                              ${loadingUnits
+                                ? html`<div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-xs text-slate-500">Loading units...</div>`
+                                : selectedUnits.length
+                                  ? selectedUnits.map(
+                                      (unit) => html`
+                                        <div class="flex items-center justify-between rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                                          <div>
+                                            <p class="font-semibold">${unit.unitIdentifier ?? unit.id}</p>
+                                            <p class="text-xs text-slate-500">${unit.unitType} • ${unit.status}</p>
+                                          </div>
+                                          <button class="text-xs text-slate-500">Edit</button>
+                                        </div>
+                                      `,
+                                    )
+                                  : html`<p class="text-xs text-slate-500">No units registered yet.</p>`}
+                              <div class="relative">
+                                <button
+                                  onClick=${() => setUnitMenuOpen((prev) => !prev)}
+                                  class="rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                                >
+                                  Add Units ^
+                                </button>
+                                ${unitMenuOpen
+                                  ? html`
+                                      <div class="absolute right-0 top-full mt-2 w-48 rounded-2xl border border-slate-200 bg-white text-sm shadow-lg">
+                                        ${Object.keys(unitTypeMap).map(
+                                          (typeLabel) => html`
+                                            <button
+                                              onClick=${() => handleUnitAdd(typeLabel)}
+                                              class="w-full rounded-2xl px-3 py-2 text-left text-xs text-slate-600 hover:bg-slate-50"
+                                            >
+                                              + ${typeLabel}
+                                            </button>
+                                          `,
+                                        )}
+                                      </div>
+                                    `
+                                  : null}
+                              </div>
+                            </div>
+                          `}
+                      <div class="mt-5 flex flex-wrap gap-3 text-xs">
+                        <button
+                          onClick=${() => setDeleteModal((prev) => ({ ...prev, logical: true }))}
+                          class="rounded-2xl border border-slate-200 px-4 py-2 text-slate-700"
+                        >
+                          Logical delete
+                        </button>
+                        <button
+                          onClick=${() => setDeleteModal((prev) => ({ ...prev, hard: true }))}
+                          class="rounded-2xl border border-rose-400 px-4 py-2 text-rose-600"
+                        >
+                          Hard delete
+                        </button>
+                      </div>
+                    </div>
+                  `
+                : null}
+            </div>
+            <div class="space-y-4">
+              <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Service console</p>
+                    <h3 class="text-lg font-semibold text-slate-900">
+                      ${activeService ? `${activeService === 'property-ai' ? 'Property AI' : 'Master AI'}` : 'No service selected'}
+                    </h3>
+                  </div>
+                  <${Menu} size="18" class="text-slate-400" />
+                </div>
+                <div class="mt-4 space-y-3">${renderServiceActions()}</div>
+              </div>
+              <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                ${renderServicePanel()}
+              </div>
             </div>
           </section>
-          {statusMessage && (
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-              {statusMessage}
-            </div>
-          )}
-          {selectedProperty && (
-            <PropertyDetails
-              property={selectedProperty}
-              units={units}
-              onAddUnit={handleAddUnit}
-              onLogicalDelete={handleLogicalDelete}
-              onHardDelete={handleHardDelete}
-            />
-          )}
-          {showUnitsInput && (
-            <AddUnitsInput
-              onCreate={(data) => handleCreateUnit({ ...data })}
-              onCancel={() => setShowUnitsInput(false)}
-            />
-          )}
-          <DeleteModal
-            open={deleteFlow.logical}
-            title="Logical Delete"
-            description="Property safely hidden"
-            onClose={() => setDeleteFlow((prev) => ({ ...prev, logical: false }))}
-            onConfirm={confirmLogicalDelete}
-          >
-            <p>Logical delete hides the property and freezes data. Nothing is removed.</p>
-            <ul className="list-disc pl-5 text-xs text-slate-600">
-              <li>Check 1: No active tenants (placeholder)</li>
-              <li>Check 2: No outstanding balance (placeholder)</li>
-            </ul>
-          </DeleteModal>
-          <DeleteModal
-            open={deleteFlow.hard}
-            title="Hard Delete"
-            description="Property & all units"
-            onClose={() => {
-              setDeleteFlow((prev) => ({ ...prev, hard: false }));
-              setHardDeletePhrase('');
-            }}
-            onConfirm={confirmHardDelete}
-            disableConfirm={hardDeletePhrase !== expectedHardDeletePhrase}
-          >
-            <p>This action permanently removes the property. Type DELETE {selectedProperty?.name} to confirm.</p>
-            <input
-              value={hardDeletePhrase}
-              onChange={(event) => setHardDeletePhrase(event.target.value)}
-              placeholder={`DELETE ${selectedProperty?.name ?? ''}`}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
-          </DeleteModal>
+          ${statusMessage
+            ? html`
+                <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                  ${statusMessage}
+                </div>
+              `
+            : null}
         </main>
       </div>
+      ${successModalOpen && lastCreatedProperty
+        ? html`
+            <div class="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/60">
+              <div class="mx-4 w-full max-w-lg rounded-3xl border border-emerald-200 bg-white p-6 shadow-xl">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.4em] text-slate-500">Success</p>
+                    <h3 class="text-xl font-semibold text-slate-900">Property added successfully</h3>
+                  </div>
+                  <button onClick=${() => setSuccessModalOpen(false)} class="text-slate-400">✕</button>
+                </div>
+                <p class="mt-4 text-sm text-slate-600">
+                  Added ${lastCreatedProperty.name} (${lastCreatedProperty.type}) in ${lastCreatedProperty.address.city}.
+                </p>
+                <p class="text-sm text-slate-600">Occupancy will reflect current unit uploads.</p>
+                <div class="mt-5 flex justify-end gap-2 text-xs">
+                  <button
+                    onClick=${() => setSuccessModalOpen(false)}
+                    class="rounded-2xl border border-slate-200 px-4 py-2 text-slate-700"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick=${() => {
+                      setDetailTab('units');
+                      setSuccessModalOpen(false);
+                    }}
+                    class="rounded-2xl bg-slate-900 px-4 py-2 text-white"
+                  >
+                    Add units
+                  </button>
+                </div>
+              </div>
+            </div>
+          `
+        : null}
+      ${DeleteModal({
+        open: deleteModal.logical,
+        title: 'Logical Delete',
+        description: 'Soft delete',
+        onClose: () => setDeleteModal((prev) => ({ ...prev, logical: false })),
+        onConfirm: handleLogicalDelete,
+        children: html`
+          <p>Logical delete hides the property and freezes data. Nothing is removed.</p>
+          <ul class="list-disc pl-5 text-xs text-slate-600">
+            <li>No active tenants (pending check)</li>
+            <li>No outstanding balance (pending check)</li>
+          </ul>
+        `,
+      })}
+      ${DeleteModal({
+        open: deleteModal.hard,
+        title: 'Hard Delete',
+        description: 'Permanent delete',
+        onClose: () => setDeleteModal((prev) => ({ ...prev, hard: false })),
+        onConfirm: handleHardDelete,
+        disableConfirm: hardPhrase !== `DELETE ${selectedProperty?.name ?? ''}`,
+        children: html`
+          <p>This action permanently deletes the property. Type DELETE ${selectedProperty?.name ?? 'PROPERTY'} to confirm.</p>
+          <input
+            value=${hardPhrase}
+            onInput=${(event) => setHardPhrase(event.currentTarget.value)}
+            placeholder=${`DELETE ${selectedProperty?.name ?? ''}`}
+            class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+        `,
+      })}
     </div>
-  );
+  `;
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(html`<${App} />`);
