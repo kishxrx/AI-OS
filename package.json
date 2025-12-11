@@ -12,7 +12,8 @@
     "prebuild": "rm -rf dist && rm -f *.tsbuildinfo",
     "build": "tsc -b",
     "start": "node dist/services/property-ai/main.js",
-    "start:dev:property-ai": "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/property-ai/src/main.ts"
+    "start:dev:property-ai": "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/property-ai/src/main.ts",
+    "start:dev:master-ai": "node -r dotenv/config --require ts-node/register --require tsconfig-paths/register services/master-ai/src/main.ts"
   },
   "keywords": [],
   "author": "",

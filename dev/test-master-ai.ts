@@ -8,6 +8,7 @@ import {
 } from '@app/common-types';
 import { McpCheckResult } from '@app/mcp-sdk';
 import { MasterAiClient } from '../services/master-ai/src/master-ai.client';
+import { PropertyApiClient } from '../services/master-ai/src/property-api.client';
 
 interface TestSetupOptions {
   opaAllowed?: boolean;
@@ -71,11 +72,18 @@ function createTestService(options: TestSetupOptions = {}): MasterAiService {
     },
   } as MasterAiClient;
 
+  const propertyApiClient = {
+    async fetchProperties() {
+      return [];
+    },
+  } as PropertyApiClient;
+
   return new MasterAiService(
     pubSubStub as any,
     opaClient as any,
     mcpClient as any,
     masterAiClient,
+    propertyApiClient,
   );
 }
 
@@ -84,7 +92,8 @@ async function testOpaRejection(): Promise<void> {
     opaAllowed: false,
     opaReason: 'policy denies it',
   });
-  const snapshot = await service.processLifecycleEvent(makeEvent('create_property'));
+  const report = await service.processLifecycleEvent(makeEvent('create_property'));
+  const snapshot = report.snapshot;
   assert.strictEqual(snapshot.allowedByPolicy, false);
   assert.strictEqual(snapshot.decision, 'rejected');
   assert.strictEqual(snapshot.policyReason, 'policy denies it');
@@ -99,7 +108,8 @@ async function testCrossCheckFailure(): Promise<void> {
     { ministry: 'legal', cleared: true, details: 'ok' },
   ];
   const service = createTestService({ crossChecks });
-  const snapshot = await service.processLifecycleEvent(makeEvent('logical_delete_property'));
+  const report = await service.processLifecycleEvent(makeEvent('logical_delete_property'));
+  const snapshot = report.snapshot;
   assert.strictEqual(snapshot.allowedByPolicy, true);
   assert.strictEqual(snapshot.decision, 'rejected');
   assert.ok(snapshot.details?.includes('ministries flagged'));
@@ -112,7 +122,8 @@ async function testApprovalPath(): Promise<void> {
     actionSuccess: true,
     actionDetails: 'action completed successfully',
   });
-  const snapshot = await service.processLifecycleEvent(makeEvent('hard_delete_property'));
+  const report = await service.processLifecycleEvent(makeEvent('hard_delete_property'));
+  const snapshot = report.snapshot;
   assert.strictEqual(snapshot.allowedByPolicy, true);
   assert.strictEqual(snapshot.decision, 'approved');
   assert.strictEqual(snapshot.details, 'action completed successfully');

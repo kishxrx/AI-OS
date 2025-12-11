@@ -222,6 +222,9 @@ const App = () => {
   const [unitMenuOpen, setUnitMenuOpen] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState('Summarize the latest property compliance tickets.');
   const [masterAgentPrompt, setMasterAgentPrompt] = useState('What is the next MCP task for Property AI?');
+  const [propertyAgentAction, setPropertyAgentAction] = useState('summary');
+  const [propertyAgentPropertyId, setPropertyAgentPropertyId] = useState('');
+  const [propertyAgentConfirmHardDelete, setPropertyAgentConfirmHardDelete] = useState(false);
   const [propertyAgentResponse, setPropertyAgentResponse] = useState(null);
   const [masterAgentResponse, setMasterAgentResponse] = useState(null);
   const [masterHistory, setMasterHistory] = useState([]);
@@ -424,17 +427,22 @@ const App = () => {
   };
 
   const sendPropertyAgentPrompt = async () => {
-    if (!agentPrompt.trim()) {
-      return;
-    }
-    setStatusMessage('Sending prompt to Property AI agent...');
+    setStatusMessage('Sending request to Property AI agent...');
     try {
-      const response = await fetchJson(`${PROPERTY_API_BASE_URL}/agent/maintenance-request`, {
+      const payload = {
+        action: propertyAgentAction,
+        propertyId: propertyAgentPropertyId || undefined,
+        payload: {
+          notes: agentPrompt,
+          confirmHardDelete: propertyAgentConfirmHardDelete,
+        },
+      };
+      const response = await fetchJson(`${PROPERTY_API_BASE_URL}/agent/property`, {
         method: 'POST',
-        body: JSON.stringify({ text: agentPrompt }),
+        body: JSON.stringify(payload),
       });
       setPropertyAgentResponse(response);
-      setStatusMessage('Property AI agent provided an analysis.');
+      setStatusMessage('Property AI agent provided a response.');
     } catch (error) {
       setStatusMessage(`Property AI agent failed: ${error.message}`);
     }
@@ -461,8 +469,8 @@ const App = () => {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      setMasterAgentResponse(response);
-      setStatusMessage('Master AI reasoning snapshot received.');
+      setMasterAgentResponse(response.brief);
+      setStatusMessage('Master AI reasoning brief received.');
       await fetchMasterHistory();
     } catch (error) {
       setStatusMessage(`Master AI agent failed: ${error.message}`);
@@ -673,15 +681,48 @@ const App = () => {
       return html`
         <div class="space-y-3 text-sm">
           <p class="text-xs uppercase tracking-[0.4em] text-slate-500">Property AI Agent</p>
+          <div class="grid gap-2 md:grid-cols-3">
+            <label class="text-[10px] uppercase tracking-[0.3em] text-slate-500">Action</label>
+            <select
+              value=${propertyAgentAction}
+              onChange=${(event) => setPropertyAgentAction(event.currentTarget.value)}
+              class="rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:border-slate-500"
+            >
+              <option value="summary">Portfolio summary</option>
+              <option value="priority">Top priority</option>
+              <option value="occupancy">Occupancy totals</option>
+              <option value="logicalDelete">Logical delete</option>
+              <option value="hardDelete">Hard delete</option>
+            </select>
+          </div>
+          <input
+            value=${propertyAgentPropertyId}
+            onInput=${(event) => setPropertyAgentPropertyId(event.currentTarget.value)}
+            placeholder="Property ID (optional)"
+            class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:border-slate-500 focus:outline-none"
+          />
+          ${propertyAgentAction === 'hardDelete'
+            ? html`
+                <label class="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked=${propertyAgentConfirmHardDelete}
+                    onChange=${(event) => setPropertyAgentConfirmHardDelete(event.currentTarget.checked)}
+                  />
+                  Confirm hard delete
+                </label>
+              `
+            : null}
           <textarea
             value=${agentPrompt}
             onInput=${(event) => setAgentPrompt(event.currentTarget.value)}
             rows="4"
+            placeholder="Add context for the assistant (optional)"
             class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           ></textarea>
           <div class="flex justify-between text-xs text-slate-500">
             <span>Model: GPT-4.1 Nano</span>
-            <span>Session warmed</span>
+            <span>Agent ready</span>
           </div>
           <button class="w-full rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white" onClick=${sendPropertyAgentPrompt}>
             Send prompt
@@ -689,9 +730,22 @@ const App = () => {
           ${propertyAgentResponse
             ? html`
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                  <p class="font-semibold text-slate-900">Detected category: ${propertyAgentResponse.category ?? '—'}</p>
-                  <p>Severity: ${propertyAgentResponse.severity ?? '—'}</p>
-                  <p>Main entity: ${propertyAgentResponse.entity ?? '—'}</p>
+                  <p class="text-[11px] font-semibold text-slate-900">
+                    Status: ${propertyAgentResponse.success ? 'Success' : 'Pending'}
+                  </p>
+                  <p>${propertyAgentResponse.narrative}</p>
+                  ${propertyAgentResponse.safety
+                    ? html`<p class="text-[10px] text-slate-500">Safety: ${propertyAgentResponse.safety}</p>`
+                    : null}
+                  ${propertyAgentResponse.recommendations
+                    ? html`
+                        <ul class="mt-2 list-disc pl-4 text-[10px] text-slate-500">
+                          ${propertyAgentResponse.recommendations.map(
+                            (item) => html`<li>${item}</li>`,
+                          )}
+                        </ul>
+                      `
+                    : null}
                 </div>
               `
             : null}
@@ -747,8 +801,24 @@ const App = () => {
           ${masterAgentResponse
             ? html`
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                  <p class="font-semibold text-slate-900">Decision: ${masterAgentResponse.decision ?? 'pending'}</p>
-                  <p>${masterAgentResponse.details ?? 'Awaiting reasoning details.'}</p>
+                  <p class="font-semibold text-slate-900">Narrative</p>
+                  <p>${masterAgentResponse.narrative}</p>
+                  <p class="text-[10px] text-slate-500">Safety summary: ${masterAgentResponse.safety}</p>
+                  ${masterAgentResponse.recommendations?.length
+                    ? html`
+                        <ul class="mt-2 list-disc pl-4 text-[10px] text-slate-500">
+                          ${masterAgentResponse.recommendations.map(
+                            (reason) => html`<li>${reason}</li>`,
+                          )}
+                        </ul>
+                      `
+                    : null}
+                  <div class="mt-2 text-[10px] text-slate-500">
+                    Portfolio: ${masterAgentResponse.metrics.totalProperties} properties, ${masterAgentResponse.metrics.totalUnits} units
+                    ${masterAgentResponse.metrics.priority
+                      ? html` • Priority: ${masterAgentResponse.metrics.priority.name} (${masterAgentResponse.metrics.priority.reason})`
+                      : ''}
+                  </div>
                 </div>
               `
             : null}

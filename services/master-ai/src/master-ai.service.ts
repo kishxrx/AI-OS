@@ -4,13 +4,16 @@ import { OpaClient } from '@app/opa-client';
 import { McpClient } from '@app/mcp-sdk';
 import {
   MasterAiPlan,
+  PropertyDto,
   PropertyLifecycleEvent,
   PropertyLifecycleAction,
+  PropertyStatus,
   ReasoningSnapshot,
 } from '@app/common-types';
 import { McpActionResult, McpCheckResult } from '@app/mcp-sdk';
 import { MasterAiClient } from './master-ai.client';
 import { mapToCanonicalTask } from './tool-registry';
+import { PropertyApiClient } from './property-api.client';
 
 @Injectable()
 export class MasterAiService implements OnModuleInit {
@@ -19,11 +22,12 @@ export class MasterAiService implements OnModuleInit {
   private readonly subscriptionName = process.env.PROPERTY_EVENTS_SUBSCRIPTION;
 
   constructor(
-    private readonly pubSubClient: PubSubClient,
-    private readonly opaClient: OpaClient,
-    private readonly mcpClient: McpClient,
-    private readonly masterAiClient: MasterAiClient,
-  ) {}
+  private readonly pubSubClient: PubSubClient,
+  private readonly opaClient: OpaClient,
+  private readonly mcpClient: McpClient,
+  private readonly masterAiClient: MasterAiClient,
+  private readonly propertyApiClient: PropertyApiClient,
+) {}
 
   onModuleInit(): void {
     if (!this.subscriptionName) {
@@ -49,7 +53,16 @@ export class MasterAiService implements OnModuleInit {
     }
   }
 
-  async processLifecycleEvent(event: PropertyLifecycleEvent): Promise<ReasoningSnapshot> {
+  async portfolioBrief(): Promise<MasterAiBrief> {
+    const properties = await this.propertyApiClient.fetchProperties();
+    return this.buildMasterBriefSummary(properties, {
+      narrative: 'Portfolio insight requested.',
+      safety: 'Data snapshot only; no actions executed.',
+      recommendations: ['Use these metrics to guide quarterly planning.'],
+    });
+  }
+
+  async processLifecycleEvent(event: PropertyLifecycleEvent): Promise<MasterAiReport> {
     const rule = this.ruleForAction(event.action);
     const snapshot: ReasoningSnapshot = {
       eventId: event.eventId,
@@ -74,7 +87,8 @@ export class MasterAiService implements OnModuleInit {
       snapshot.details = 'OPA denied the action.';
       this.snapshots.push(snapshot);
       this.logger.warn(`OPA rejected ${event.action} for ${event.propertyId}`);
-      return snapshot;
+      const brief = await this.buildBrief(event, snapshot);
+      return { snapshot, brief };
     }
 
     const plan = await this.masterAiClient.createPlan(event);
@@ -93,7 +107,8 @@ export class MasterAiService implements OnModuleInit {
       this.logger.warn(
         `Master AI rejected ${event.action} for ${event.propertyId} after ministry checks`,
       );
-      return snapshot;
+      const brief = await this.buildBrief(event, snapshot, plan, checks);
+      return { snapshot, brief };
     }
 
     const executionResults = await this.executePlanActions(event, plan);
@@ -103,14 +118,16 @@ export class MasterAiService implements OnModuleInit {
       snapshot.details = `Action failed: ${failedResult.details}`;
       this.snapshots.push(snapshot);
       this.logger.error('Failed to execute ministry action', failedResult.details);
-      return snapshot;
+      const brief = await this.buildBrief(event, snapshot, plan, checks, executionResults);
+      return { snapshot, brief };
     }
 
     snapshot.decision = 'approved';
     snapshot.details = executionResults.map((result) => result.details).join(' | ');
     this.snapshots.push(snapshot);
     this.logger.log(`Master AI approved ${event.action} for ${event.propertyId}`);
-    return snapshot;
+    const brief = await this.buildBrief(event, snapshot, plan, checks, executionResults);
+    return { snapshot, brief };
   }
 
   listSnapshotHistory(): ReasoningSnapshot[] {
@@ -217,4 +234,76 @@ export class MasterAiService implements OnModuleInit {
       }),
     );
   }
+
+  private async buildBrief(
+    event: PropertyLifecycleEvent,
+    snapshot: ReasoningSnapshot,
+    plan?: MasterAiPlan,
+    checks?: McpCheckResult[],
+    executionResults?: McpActionResult[],
+  ): Promise<MasterAiBrief> {
+    const properties = await this.propertyApiClient.fetchProperties();
+    const baseNarrative =
+      plan?.narrative ??
+      `Master AI processed ${event.action} for property ${event.propertyId ?? 'unknown'}.`;
+    const safety =
+      snapshot.decision === 'approved'
+        ? 'All checks completed and the system remains safe.'
+        : snapshot.details ?? 'Action halted for safety.';
+    const recommendations = [
+      `Refer to event ${snapshot.eventId} for traceability.`,
+      ...(snapshot.decision === 'approved'
+        ? ['Monitor the property for follow-up tasks.']
+        : [`Investigate why the action was blocked: ${snapshot.details}`]),
+    ];
+    return this.buildMasterBriefSummary(properties, {
+      narrative: baseNarrative,
+      safety,
+      recommendations,
+    });
+  }
+
+  private buildMasterBriefSummary(
+    properties: PropertyDto[],
+    base: { narrative: string; safety: string; recommendations: string[] },
+  ): MasterAiBrief {
+    const totalUnits = properties.reduce((sum, prop) => sum + (prop.statistics?.unitCount ?? 0), 0);
+    const priority =
+      properties.find((prop) => prop.status !== PropertyStatus.ACTIVE) ?? properties[0] ?? null;
+    const recommendations = [...base.recommendations];
+    if (priority) {
+      recommendations.push(
+        `Focus on "${priority.name}" (status ${priority.status}) for occupancy or maintenance reviews.`,
+      );
+    }
+
+    return {
+      narrative: base.narrative,
+      safety: base.safety,
+      recommendations,
+      metrics: {
+        totalProperties: properties.length,
+        totalUnits,
+        priority: priority
+          ? { id: priority.id, name: priority.name, reason: `status ${priority.status}` }
+          : null,
+      },
+    };
+  }
+}
+
+export interface MasterAiBrief {
+  narrative: string;
+  safety: string;
+  recommendations: string[];
+  metrics: {
+    totalProperties: number;
+    totalUnits: number;
+    priority: { id: string; name: string; reason: string } | null;
+  };
+}
+
+export interface MasterAiReport {
+  snapshot: ReasoningSnapshot;
+  brief: MasterAiBrief;
 }

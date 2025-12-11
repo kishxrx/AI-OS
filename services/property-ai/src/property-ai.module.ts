@@ -9,12 +9,15 @@ import { UnitAiController } from './unit-ai.controller';
 import { UnitFirestoreRepository } from './unit.firestore.repository';
 import { I_PROPERTY_REPOSITORY, I_UNIT_REPOSITORY } from '@app/common-types';
 import { PubSubClient } from '@app/pubsub-sdk';
+import { PropertyAgentController } from './agent/property-agent.controller';
+import { PropertyAgentService } from './agent/property-agent.service';
 
 @Module({
   imports: [AgentModule],
-  controllers: [PropertyAiController, UnitAiController],
+  controllers: [PropertyAiController, UnitAiController, PropertyAgentController],
   providers: [
     PropertyAiService,
+    PropertyAgentService,
     PubSubClient,
     firestoreProvider,
     {

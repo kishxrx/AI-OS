@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import { MasterAiService } from './master-ai.service';
+import { MasterAiService, MasterAiBrief, MasterAiReport } from './master-ai.service';
 import { PropertyLifecycleEvent } from '@app/common-types';
 import { ApiBody, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
@@ -10,9 +10,15 @@ export class MasterAiController {
 
   @Post('events')
   @ApiBody({ description: 'Process a lifecycle event via Master AI' })
-  @ApiOkResponse({ description: 'Reasoning snapshot for the processed event' })
-  processEvent(@Body() event: PropertyLifecycleEvent) {
+  @ApiOkResponse({ description: 'Reasoning snapshot + brief for the processed event' })
+  processEvent(@Body() event: PropertyLifecycleEvent): Promise<MasterAiReport> {
     return this.masterAiService.processLifecycleEvent(event);
+  }
+
+  @Get('brief')
+  @ApiOkResponse({ description: 'Portfolio brief from Master AI' })
+  async portfolioBrief(): Promise<MasterAiBrief> {
+    return this.masterAiService.portfolioBrief();
   }
 
   @Get('history')
